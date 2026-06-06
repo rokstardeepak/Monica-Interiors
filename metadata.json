@@ -1,0 +1,6 @@
+{
+  "name": "Monica Interiors",
+  "description": "A premium interior design portfolio for Monica Interiors in Mumbai, featuring beautiful project galleries and an easy-to-use consultation booking portal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
