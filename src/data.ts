@@ -181,7 +181,7 @@ export const QUIZ_QUESTIONS: DesignQuizQuestion[] = [
     options: [
       { id: 'q2-a', text: 'A completely silent gallery, free of clutter and visual noise', image: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&q=80&w=400', style: 'Aesthetic Minimalist' },
       { id: 'q2-b', text: 'A dramatic, sophisticated backdrop designed for luxury hosting', image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=400', style: 'Modern Classic' },
-      { id: 'q2-c', text: 'A deeply personal, cocoon-like refuge with warm, soft textures', image: 'https://images.unsplash.com/photo-1617806118233-18e1db207f62?auto=format&fit=crop&q=80&w=400', style: 'Warm Contemporary' },
+      { id: 'q2-c', text: 'A deeply personal, cocoon-like refuge with warm, soft textures', image: 'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?auto=format&fit=crop&q=80&w=400', style: 'Warm Contemporary' },
       { id: 'q2-d', text: 'An organic escape connected to nature, sunlight, and flowing forms', image: 'https://images.unsplash.com/photo-1618221381711-42ca8ab6e908?auto=format&fit=crop&q=80&w=400', style: 'Biophilic Luxe' }
     ]
   },

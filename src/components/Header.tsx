@@ -12,9 +12,10 @@ interface HeaderProps {
   onBookClick: () => void;
   activeSection: string;
   setActiveSection: (sec: string) => void;
+  onOpenPortal?: () => void;
 }
 
-export default function Header({ onBookClick, activeSection, setActiveSection }: HeaderProps) {
+export default function Header({ onBookClick, activeSection, setActiveSection, onOpenPortal }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   const navItems = [
@@ -23,22 +24,32 @@ export default function Header({ onBookClick, activeSection, setActiveSection }:
     { id: 'projects', name: 'Portfolio' },
     { id: 'inspiration', name: 'Mood Space' },
     { id: 'quiz', name: 'Style Match' },
+    { id: 'journal', name: 'Design Journal' },
     { id: 'testimonials', name: 'Testimonials' }
   ];
 
   const scrollTo = (id: string) => {
     setMobileMenuOpen(false);
-    const element = document.getElementById(id);
-    if (element) {
-      const headerOffset = 100;
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
-      setActiveSection(id);
-    }
+    setActiveSection(id);
+    
+    // Smooth scroll on next tick when DOM sections render
+    setTimeout(() => {
+      const element = document.getElementById(id);
+      if (element) {
+        const headerOffset = 100;
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+      } else if (id === 'hero') {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      }
+    }, 80);
   };
 
   return (
@@ -103,7 +114,16 @@ export default function Header({ onBookClick, activeSection, setActiveSection }:
         </nav>
 
         {/* Action Button - Secure Gateway Booking */}
-        <div className="hidden lg:flex items-center">
+        <div className="hidden lg:flex items-center gap-3">
+          {onOpenPortal && (
+            <button
+              onClick={onOpenPortal}
+              className="text-[#BFA15F] hover:text-[#3C2A21] transition-all cursor-pointer uppercase tracking-[0.12em] text-[10px] font-bold border border-[#BFA15F]/40 hover:border-[#3C2A21]/30 px-3 py-2.5 rounded bg-white font-sans"
+              id="header-portal-btn"
+            >
+              🔑 Track Bookings
+            </button>
+          )}
           <button
             onClick={onBookClick}
             className="flex items-center gap-2.5 bg-[#3C2A21] text-[#FAF8F5] px-5 py-3 hover:bg-[#1E2941] active:scale-98 transition-all font-sans text-xs uppercase tracking-[0.15em] font-medium shadow-md shadow-[#3C2A21]/15"
@@ -149,7 +169,19 @@ export default function Header({ onBookClick, activeSection, setActiveSection }:
                   {item.name}
                 </button>
               ))}
-              <div className="border-t border-[#3C2A21]/10 pt-4 mt-2">
+              <div className="border-t border-[#3C2A21]/10 pt-4 mt-2 flex flex-col gap-3">
+                {onOpenPortal && (
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onOpenPortal();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 border border-[#BFA15F] text-[#BFA15F] hover:bg-[#BFA15F]/5 py-3 text-xs uppercase tracking-[0.15em] font-bold rounded bg-white text-center"
+                    id="mobile-drawer-portal-btn"
+                  >
+                    🔑 Track Bookings
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);

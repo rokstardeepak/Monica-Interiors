@@ -9,9 +9,10 @@ import { Instagram, Mail, Phone, MapPin, ShieldCheck, Heart } from 'lucide-react
 interface FooterProps {
   onBookClick: () => void;
   onOpenPolicy?: (tab: 'contact' | 'terms' | 'privacy' | 'refund') => void;
+  onOpenPortal?: () => void;
 }
 
-export default function Footer({ onBookClick, onOpenPolicy }: FooterProps) {
+export default function Footer({ onBookClick, onOpenPolicy, onOpenPortal }: FooterProps) {
   return (
     <footer className="bg-[#1E1714] text-[#FAF8F5]/90 border-t border-[#3C2A21]/20">
       <div className="max-w-7xl mx-auto px-6 py-16 md:py-24">
@@ -40,14 +41,14 @@ export default function Footer({ onBookClick, onOpenPolicy }: FooterProps) {
             </div>
             
             <p className="font-sans text-sm text-[#FAF8F5]/60 max-w-sm leading-relaxed font-light">
-              Designing comfortable, elegant spaces that bring peacefulness and style to your home. Providing premium residential and commercial full-service interior renovations across India.
+              Transforming homes into timeless spaces. Monica Interiors is a premium luxury interior design studio with 6+ years of experience, creating elegant sanctuaries for 2BHK, 3BHK, and Villas across Mumbai, Navi Mumbai, Delhi, &amp; Rajasthan.
             </p>
 
             <div className="flex items-center gap-4 pt-2">
               <a 
                 href="https://www.instagram.com/m.o.n.i.c.a.interiors/" 
                 target="_blank" 
-                rel="noreferrer"
+                rel="noopener"
                 className="w-10 h-10 rounded-full border border-[#FAF8F5]/10 flex items-center justify-center hover:bg-[#BFA15F] hover:border-transparent hover:text-[#1E1714] transition-all text-[#FAF8F5]/80"
                 aria-label="Instagram Portfolio Profile"
               >
@@ -87,8 +88,8 @@ export default function Footer({ onBookClick, onOpenPolicy }: FooterProps) {
                 <MapPin className="w-4 h-4 text-[#BFA15F] mt-0.5 flex-shrink-0" />
                 <span>
                   Monica Interiors Studio<br />
-                  Bandra West, Link Road Area<br />
-                  Mumbai, MH &bull; India
+                  Mumbai • Navi Mumbai • Delhi • Rajasthan<br />
+                  India
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -123,33 +124,44 @@ export default function Footer({ onBookClick, onOpenPolicy }: FooterProps) {
           </div>
           
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
-            <button 
-              onClick={() => onOpenPolicy?.('contact')} 
+            <a 
+              href="#contact"
+              onClick={(e) => { e.preventDefault(); onOpenPolicy?.('contact'); }} 
               className="hover:text-[#BFA15F] transition-all cursor-pointer uppercase tracking-wider text-[10px] font-semibold text-[#FAF8F5]/60 hover:underline"
               id="footer-link-contact"
             >
               Contact Us
-            </button>
-            <button 
-              onClick={() => onOpenPolicy?.('terms')} 
+            </a>
+            <a 
+              href="#terms"
+              onClick={(e) => { e.preventDefault(); onOpenPolicy?.('terms'); }} 
               className="hover:text-[#BFA15F] transition-all cursor-pointer uppercase tracking-wider text-[10px] font-semibold text-[#FAF8F5]/60 hover:underline"
               id="footer-link-terms"
             >
               Terms &amp; Conditions
-            </button>
-            <button 
-              onClick={() => onOpenPolicy?.('privacy')} 
+            </a>
+            <a 
+              href="#privacy"
+              onClick={(e) => { e.preventDefault(); onOpenPolicy?.('privacy'); }} 
               className="hover:text-[#BFA15F] transition-all cursor-pointer uppercase tracking-wider text-[10px] font-semibold text-[#FAF8F5]/60 hover:underline"
               id="footer-link-privacy"
             >
               Privacy Policy
-            </button>
-            <button 
-              onClick={() => onOpenPolicy?.('refund')} 
+            </a>
+            <a 
+              href="#refund"
+              onClick={(e) => { e.preventDefault(); onOpenPolicy?.('refund'); }} 
               className="hover:text-[#BFA15F] transition-all cursor-pointer uppercase tracking-wider text-[10px] font-semibold text-[#FAF8F5]/60 hover:underline"
               id="footer-link-refund"
             >
               Refund Policy
+            </a>
+            <button 
+              onClick={onOpenPortal} 
+              className="text-[#BFA15F] hover:text-white transition-all cursor-pointer uppercase tracking-wider text-[10px] font-bold border border-[#BFA15F]/30 hover:border-white px-2.5 py-0.5 rounded bg-[#FAF8F5]/5 hover:bg-[#BFA15F]/10"
+              id="footer-link-portal"
+            >
+              🔑 Track Bookings
             </button>
           </div>
 

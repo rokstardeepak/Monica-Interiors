@@ -45,9 +45,10 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
   const [bookingDetails, setBookingDetails] = useState<any>(null);
 
   // Razorpay Integration States
-  const [razorpayConfig, setRazorpayConfig] = useState<{ configured: boolean; keyId: string }>({
+  const [razorpayConfig, setRazorpayConfig] = useState<{ configured: boolean; keyId: string; googleMeetLink?: string }>({
     configured: false,
-    keyId: ""
+    keyId: "",
+    googleMeetLink: ""
   });
   const [razorpayError, setRazorpayError] = useState<string | null>(null);
   const [showSimulatedRazorpayModal, setShowSimulatedRazorpayModal] = useState(false);
@@ -84,8 +85,11 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
     });
   };
 
-  // Helper to generate elegant, unique, deterministic Google Meet links
+  // Helper to generate elegant, unique, deterministic Google Meet links or retrieve customized link
   const generateMeetLink = (bookingId: string) => {
+    if (razorpayConfig?.googleMeetLink && razorpayConfig.googleMeetLink.trim() !== "") {
+      return razorpayConfig.googleMeetLink.trim();
+    }
     const cleanId = (bookingId || '').replace(/[^a-zA-Z]/g, "").toLowerCase();
     const pad = (cleanId + "spacedesignmeet").slice(0, 10);
     return `https://meet.google.com/${pad.slice(0, 3)}-${pad.slice(3, 7)}-${pad.slice(7, 10)}`;
@@ -992,30 +996,13 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                   )}
 
                   {emailStatus === 'simulated' && (
-                    <div className="bg-stone-100 text-stone-700 border border-stone-200 rounded-md p-3.5 flex flex-col gap-2 font-sans text-[11px]">
-                      <div className="flex gap-2.5 items-start">
-                        <div className="w-5 h-5 rounded-full bg-[#BFA15F]/15 flex items-center justify-center text-[#BFA15F] shrink-0 mt-0.5">ℹ</div>
-                        <div>
-                          <strong className="font-semibold block uppercase tracking-wider text-stone-800 text-[10px]">Email Logging Sandbox Mode</strong>
-                          <span className="font-light block opacity-90 mt-0.5 leading-relaxed">
-                            No active mail gateway was configured. We securely captured and logged a gorgeous html receipt containing step-by-step preparation checklists in your terminal logs!
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="bg-stone-50 border border-stone-200/60 rounded p-2.5 mt-1">
-                        <span className="font-serif italic text-stone-900 font-semibold block text-[12px] mb-1">📬 How to configure live email inbox delivery:</span>
-                        <p className="text-[10px] text-stone-500 font-normal leading-relaxed">
-                          To enable actual email delivery, simply define your standard mail server configuration variables under the **Secrets (Settings)** tab in the AI Studio sidebar:
-                        </p>
-                        <div className="font-mono text-[9px] text-[#7F675B] mt-2 flex flex-col gap-1 bg-[#FAF8F5] p-2 rounded border border-stone-200">
-                          <div><span className="text-stone-400"># SMTP Configuration (Gmail, Resend, etc.)</span></div>
-                          <div>SMTP_HOST=smtp.gmail.com</div>
-                          <div>SMTP_PORT=465</div>
-                          <div>SMTP_USER=your_email@gmail.com</div>
-                          <div>SMTP_PASS=your_app_specific_password</div>
-                          <div>SMTP_SENDER_EMAIL=your_email@gmail.com</div>
-                        </div>
+                    <div className="bg-stone-100 text-stone-700 border border-stone-200 rounded-md p-3.5 flex gap-2.5 items-start font-sans text-[11px]">
+                      <div className="w-5 h-5 rounded-full bg-[#BFA15F]/20 flex items-center justify-center text-[#BFA15F] shrink-0 mt-0.5 text-xs font-serif italic">i</div>
+                      <div>
+                        <strong className="font-semibold block uppercase tracking-wider text-stone-800 text-[10px]">Test Mode Confirmation Active</strong>
+                        <span className="font-light block opacity-90 mt-0.5 leading-relaxed">
+                          Your reservation has been securely logged on the server and is queryable in the Owner Portal.
+                        </span>
                       </div>
                     </div>
                   )}
@@ -1053,15 +1040,22 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                   </div>
                   {bookingDetails.meetLink && (
                     <div className="flex flex-col gap-1 pb-2 border-b border-stone-100">
-                      <span className="font-medium text-[#6B625E]">Google Meet Room:</span>
-                      <a 
-                        href={bookingDetails.meetLink} 
-                        target="_blank" 
-                        rel="noreferrer" 
-                        className="text-[#BFA15F] hover:underline font-mono text-[10px] font-semibold break-all text-right"
-                      >
-                        {bookingDetails.meetLink}
-                      </a>
+                      <div className="flex justify-between items-center w-full">
+                        <span className="font-medium text-[#6B625E]">Google Meet Room:</span>
+                        <a 
+                          href={bookingDetails.meetLink} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="text-[#BFA15F] hover:underline font-mono text-[10px] font-semibold break-all text-right max-w-[200px]"
+                        >
+                          {bookingDetails.meetLink}
+                        </a>
+                      </div>
+                      {!razorpayConfig?.googleMeetLink && (
+                        <p className="text-[10px] text-[#6B625E]/70 font-sans italic leading-normal text-right mt-1">
+                          💡 If Google says "Check your meeting code" for a dynamic room code, Monica will activate &amp; register it right at the time of your call. To specify a permanent recurring room instead, set GOOGLE_MEET_LINK in environmental variables.
+                        </p>
+                      )}
                     </div>
                   )}
                   <div className="flex justify-between">

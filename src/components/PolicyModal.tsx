@@ -299,7 +299,7 @@ export default function PolicyModal({ isOpen, onClose, initialTab = 'contact' }:
                 <div className="flex flex-col gap-6" id="policy-content-refund">
                   <div>
                     <span className="font-mono text-xs uppercase tracking-[0.25em] text-[#BFA15F] font-semibold">
-                      Booking Protections
+                      Strict Policy Notice
                     </span>
                     <h3 className="font-serif text-2xl md:text-3xl text-[#3C2A21] tracking-tight mt-1">
                       Refund & Cancellation Policy
@@ -307,20 +307,23 @@ export default function PolicyModal({ isOpen, onClose, initialTab = 'contact' }:
                   </div>
 
                   <div className="flex flex-col gap-4 font-light text-xs md:text-sm">
-                    <p>
-                      <strong>1. Video Consult Reservations:</strong> We understand scheduling plans shift! Pre-booked consultation deposits (such as ₹250 or other designated amounts) are fully refundable if a cancellation request is submitted at least <strong>24 hours</strong> prior to your scheduled time slot.
+                    <p className="border-l-2 border-[#BFA15F] pl-3 py-1 bg-stone-100 text-stone-700 italic font-medium">
+                      Important: All sales and consultation bookings are final. Once a transaction or slot deposit is fully compiled and completed, payments are strictly non-refundable.
                     </p>
                     <p>
-                      <strong>2. Cancellations Within 24 Hours:</strong> If you need to cancel within 24 hours of your booking, you can choose to reschedule to any future date for free, or cancel with a 50% reservation deposit refund to cover pre-allocated design desk checks.
+                      <strong>1. No Refunds:</strong> Since custom design desk preparations, color board analysis compilations, and dedicated architectural rendering slot blocking begin immediately upon order confirmation, we operate a firm <strong>no-refund and no-cancellation policy once payment is completed</strong>.
                     </p>
                     <p>
-                      <strong>3. Completed Services:</strong> Consultation and planning fees are non-refundable once the full video session has been successfully initiated, or custom layout checklists have been prepared and delivered to the client.
+                      <strong>2. Rescheduling Flexibility:</strong> While payments are entirely non-refundable, you can request to reschedule your booked video or studio consultation slot up to <strong>12 hours prior</strong> to the scheduled time. Your design voucher will be safely preserved for your future session booking free of cost.
                     </p>
                     <p>
-                      <strong>4. Turnkey Service Retainers:</strong> Retainers and milestones paid under physical woodwork, plumbing, or raw turnkey building deliverables are governed specifically by the signed civil site contract rather than virtual checkout norms.
+                      <strong>3. Completed Deliverables:</strong> All digital assets, modular layout guides, style analysis reports, and rendering coordination packages delivered after interactive design sprints or consult reviews are custom-compiled and intellectual properties of the client; hence, they cannot be returned or refunded.
                     </p>
                     <p>
-                      <strong>5. Refund Disbursement:</strong> Once approved, your refund will be processed back automatically through the original source channel (Razorpay API back to your debit/credit card, net banking, or UPI identifier) within <strong>5 to 7 operational bank days</strong>.
+                      <strong>4. Project Turnkey Milestones:</strong> Milestone payments or advance retainers made under separate civil, woodwork, hardware, or turnkey site development work contracts are governed exclusively by their physical design agreements and are similarly final when allocated to raw material acquisition.
+                    </p>
+                    <p>
+                      <strong>5. Support Queries:</strong> For any scheduling adjustments, please reach out to <a href="mailto:monicainteriors23@gmail.com" className="hover:text-[#BFA15F] transition-colors font-mono font-bold underline">monicainteriors23@gmail.com</a> or message our studio coordinators on WhatsApp.
                     </p>
                   </div>
                 </div>

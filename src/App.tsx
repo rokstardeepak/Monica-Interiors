@@ -19,8 +19,12 @@ import BeforeAfterSlider from './components/BeforeAfterSlider';
 import StyleQuiz from './components/StyleQuiz';
 import MoodBoardSimulator from './components/MoodBoardSimulator';
 import AppointmentBooking from './components/AppointmentBooking';
-import InstagramReels from './components/InstagramReels';
 import PolicyModal, { PolicyTab } from './components/PolicyModal';
+import StudioPortal from './components/StudioPortal';
+import ServiceDetails from './components/ServiceDetails';
+import WorkCarousel from './components/WorkCarousel';
+import BlogSection from './components/BlogSection';
+import WhatsAppEnquiryModal from './components/WhatsAppEnquiryModal';
 
 export default function App() {
   const [activeSection, setActiveSection] = useState('hero');
@@ -36,6 +40,16 @@ export default function App() {
   // Policy Modal States
   const [policyOpen, setPolicyOpen] = useState(false);
   const [policyTab, setPolicyTab] = useState<PolicyTab>('contact');
+
+  // Studio Portal State
+  const [portalOpen, setPortalOpen] = useState(false);
+
+  // Selected Service Detail Page State
+  const [selectedService, setSelectedService] = useState<string | null>(null);
+
+  // WhatsApp Enquiry State
+  const [whatsAppOpen, setWhatsAppOpen] = useState(false);
+  const [whatsAppInitialService, setWhatsAppInitialService] = useState('');
 
   // Auto-rotating Hero slides list
   const heroSlides = [
@@ -94,11 +108,52 @@ export default function App() {
       <Header 
         onBookClick={() => triggerBookingWithPack()} 
         activeSection={activeSection}
-        setActiveSection={setActiveSection}
+        setActiveSection={(sec) => {
+          setSelectedService(null);
+          setActiveSection(sec);
+        }}
+        onOpenPortal={() => setPortalOpen(true)}
       />
 
-      {/* 2. HERO / IMMERSIVE BRAND INTRO */}
-      <section id="hero" className="relative h-[90vh] min-h-[500px] flex items-center bg-[#1E1714]">
+      {selectedService ? (
+        <motion.div
+          key="service-details-page"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.4 }}
+          className="w-full"
+        >
+          <ServiceDetails
+            serviceId={selectedService}
+            onClose={() => {
+              setSelectedService(null);
+              // Smoothly scroll back to the 'services' section on the main overview
+              setTimeout(() => {
+                const element = document.getElementById('services');
+                if (element) {
+                  const headerOffset = 100;
+                  const elementPosition = element.getBoundingClientRect().top;
+                  const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                  window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                  });
+                } else {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }, 80);
+            }}
+            onBookService={(pkgId) => {
+              setSelectedService(null);
+              triggerBookingWithPack(pkgId);
+            }}
+          />
+        </motion.div>
+      ) : (
+        <>
+          {/* 2. HERO / IMMERSIVE BRAND INTRO */}
+          <section id="hero" className="relative h-[90vh] min-h-[500px] flex items-center bg-[#1E1714]">
         
         {/* Animated Slide Backings */}
         {heroSlides.map((slide, idx) => (
@@ -149,9 +204,30 @@ export default function App() {
             </AnimatePresence>
           </div>
 
-          <p className="font-sans text-sm md:text-base text-stone-300 max-w-xl leading-relaxed font-light">
-            Luxury interior design studio specialized in comprehensive structural renovations. We create minimalist, hand-crafted architectural sanctuaries with timeless color stories.
+          <p className="font-sans text-sm md:text-base text-stone-200 max-w-2xl leading-relaxed font-light">
+            <strong className="text-white block font-serif text-lg sm:text-xl md:text-2xl font-normal mb-2 leading-snug">
+              Transforming homes into timeless spaces
+            </strong>
+            Monica Interiors | Luxury Interior Design specializing in high-end, hand-crafted architectural sanctuaries.
           </p>
+
+          {/* Luxury Studio Badging */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 border-y border-white/10 py-5 w-full max-w-3xl font-sans mt-2">
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase text-[#BFA15F] tracking-widest font-mono">Experience</span>
+              <span className="text-xs sm:text-sm font-serif font-light text-[#FAF8F5] mt-1">6+ Years Excellence</span>
+            </div>
+            <div className="flex flex-col border-l border-white/10 pl-4 sm:pl-8">
+              <span className="text-[10px] uppercase text-[#BFA15F] tracking-widest font-mono">Expertise</span>
+              <span className="text-xs sm:text-sm font-serif font-light text-[#FAF8F5] mt-1">2BHK • 3BHK • Villas</span>
+            </div>
+            <div className="flex flex-col border-l border-white/10 col-span-2 pl-4 sm:pl-8">
+              <span className="text-[10px] uppercase text-[#BFA15F] tracking-widest font-mono">Service Regions</span>
+              <span className="text-xs sm:text-sm font-serif font-light text-[#FAF8F5] mt-1 leading-normal">
+                Mumbai • Navi Mumbai • Delhi • Rajasthan
+              </span>
+            </div>
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
             <button
@@ -209,20 +285,73 @@ export default function App() {
                 Monica Interiors &bull; Studio Services
               </h2>
               <p className="font-sans text-sm md:text-base text-[#6B625E] font-light leading-relaxed">
-                As detailed in our design boutique brochure, we specialize in high-end, premium interior transformations across India. From structural clearance optimizations to complete Turnkey construction hand-holding, our studio delivers uncompromising precision.
+                Transforming homes into timeless spaces. With over 6+ years of specialized luxury expertise, we design and build bespoke 2BHK, 3BHK, and Villas, operating across Mumbai, Navi Mumbai, Delhi, and Rajasthan. From layout clearance audits to end-to-end turnkey handovers, we deliver uncompromising premium quality.
               </p>
               <div className="flex gap-6 border-t border-[#3C2A21]/10 pt-6 mt-2">
                 <div className="flex flex-col">
                   <span className="font-serif text-3xl font-semibold text-[#3C2A21]">100%</span>
-                  <span className="font-sans text-[10px] uppercase text-[#6B625E] tracking-wider mt-1">Turnkey Site Delivery</span>
+                  <span className="font-sans text-[10px] uppercase text-[#6B625E] tracking-wider mt-1">Turnkey Delivery</span>
                 </div>
                 <div className="flex flex-col border-l border-[#3C2A21]/10 pl-6">
                   <span className="font-serif text-3xl font-semibold text-[#3C2A21]">Premium</span>
                   <span className="font-sans text-[10px] uppercase text-[#6B625E] tracking-wider mt-1">Sourced Materials</span>
                 </div>
                 <div className="flex flex-col border-l border-[#3C2A21]/10 pl-6">
-                  <span className="font-serif text-3xl font-semibold text-[#3C2A21]">+91</span>
-                  <span className="font-sans text-[10px] uppercase text-[#6B625E] tracking-wider mt-1">Mumbai-Based Studio</span>
+                  <span className="font-serif text-3xl font-semibold text-[#3C2A21]">6+ Yrs</span>
+                  <span className="font-sans text-[10px] uppercase text-[#6B625E] tracking-wider mt-1">Design Trust</span>
+                </div>
+              </div>
+            </div>
+
+            {/* End-to-End Service Coverage Board */}
+            <div className="bg-gradient-to-br from-[#1E1714] to-[#2B201C] p-6 md:p-8 rounded-lg shadow-md border border-[#BFA15F]/20 text-[#FAF8F5] relative overflow-hidden" id="end-to-end-services-panel">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-[#BFA15F]/5 rounded-bl-full pointer-events-none" />
+              <div className="relative z-10 flex flex-col lg:flex-row justify-between gap-8 lg:items-center">
+                <div className="flex flex-col gap-2.5 max-w-xl">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#BFA15F]" />
+                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#BFA15F] font-bold">End-to-End Service Portfolio Range</span>
+                  </div>
+                  <h3 className="font-serif text-2xl md:text-3xl font-light tracking-tight text-white leading-tight">We offer end-to-end interior services</h3>
+                  <p className="font-sans text-xs sm:text-sm text-stone-300 font-light leading-relaxed">
+                    At Monica Interiors, we take absolute care of conceptual designs, planning, premium material sourcing, Vastu-alignment, and complete master turnkey execution for both residential and commercial projects.
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:min-w-[500px]">
+                  {/* Residential Card */}
+                  <div className="bg-white/5 border border-white/10 rounded p-4 flex flex-col gap-2 hover:border-[#BFA15F]/40 transition-all duration-300">
+                    <div className="flex items-center gap-2 text-[#BFA15F] font-semibold text-xs uppercase tracking-wider font-sans">
+                      <span>🏡 Residential Interior Services</span>
+                    </div>
+                    <p className="font-sans text-xs text-stone-300 font-light leading-relaxed">
+                      Custom, high-contrast atmospheric sanctuaries tailored to make your home spaces feel elegant, functional, and spacious:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {['Bedroom', 'Living Room', 'Dining Room', 'Modular Kitchen'].map((tag) => (
+                        <span key={tag} className="bg-white/10 text-white text-[10px] px-2 py-0.5 rounded font-sans hover:bg-[#BFA15F]/20 hover:text-white transition-colors cursor-default">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Commercial Card */}
+                  <div className="bg-white/5 border border-white/10 rounded p-4 flex flex-col gap-2 hover:border-[#BFA15F]/40 transition-all duration-300">
+                    <div className="flex items-center gap-2 text-[#BFA15F] font-semibold text-xs uppercase tracking-wider font-sans">
+                      <span>🏢 Commercial Interior Services</span>
+                    </div>
+                    <p className="font-sans text-xs text-stone-300 font-light leading-relaxed">
+                      Strategic workspace layouts designed to align with branding layout standards, optimize customer flow, and boost output:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {['Offices', 'Boutiques', 'Cafes', 'Plus More'].map((tag) => (
+                        <span key={tag} className="bg-white/10 text-white text-[10px] px-2 py-0.5 rounded font-sans hover:bg-[#BFA15F]/20 hover:text-white transition-colors cursor-default">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -230,70 +359,200 @@ export default function App() {
             {/* Flyer Services Grid - 5 columns */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mt-4">
               
-              <div className="bg-[#FAF8F5] border border-[#3C2A21]/10 p-6 rounded shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-6">
-                <div>
-                  <div className="w-10 h-10 rounded bg-[#3C2A21]/5 flex items-center justify-center text-[#BFA15F] mb-4">
-                    <Home className="w-5 h-5" />
+              {/* Complete Home Interior */}
+              <button
+                onClick={() => setSelectedService('complete-home')}
+                className="group text-left bg-[#FAF8F5] hover:bg-white border border-[#3C2A21]/10 hover:border-[#BFA15F] p-6 rounded shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between gap-6 cursor-pointer active:scale-98 w-full"
+                id="service-card-complete-home"
+              >
+                <div className="flex flex-col h-full justify-between">
+                  <div>
+                    <div className="w-10 h-10 rounded bg-[#3C2A21]/5 group-hover:bg-[#BFA15F]/10 flex items-center justify-center text-[#BFA15F] mb-4 transition-all duration-300">
+                      <Home className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    </div>
+                    <h3 className="font-serif text-base font-semibold text-[#3C2A21] leading-snug group-hover:text-[#BFA15F] transition-colors font-sans uppercase tracking-wider text-[13px]">Complete Home Interior</h3>
+                    <p className="font-sans text-xs text-[#6B625E] font-light leading-relaxed mt-2 pb-3 border-b border-[#3C2A21]/5">
+                      Comprehensive residential mapping, custom furnishing, and spatial transitions designed for 1BHK apartments up to sprawling luxury Villas.
+                    </p>
+                    <ul className="mt-4 flex flex-col gap-1.5 font-sans text-[11px] text-[#6B625E]/90">
+                      <li className="flex items-center gap-1.5 font-medium text-stone-700">
+                        <span className="text-[#BFA15F]">&bull;</span> Full 1BHK to Villa layouts
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Bespoke ceiling blueprints
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Material &amp; styling palettes
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Photorealistic 3D concepts
+                      </li>
+                    </ul>
                   </div>
-                  <h3 className="font-serif text-base font-semibold text-[#3C2A21] leading-snug">Complete Home Interior</h3>
-                  <p className="font-sans text-xs text-[#6B625E] font-light leading-relaxed mt-2">
-                    Comprehensive residential mapping, custom furnishing, and spatial transitions designed for 1BHK apartments up to sprawling luxury Villas.
-                  </p>
+                  <div className="mt-6 flex items-center justify-between pt-3 border-t border-[#3C2A21]/5">
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#BFA15F] font-semibold mt-2">&bull; 1BHK to Villas</span>
+                    <span className="text-[#BFA15F] text-xs font-semibold group-hover:translate-x-1.5 transition-transform duration-300">
+                      Learn More &rarr;
+                    </span>
+                  </div>
                 </div>
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#BFA15F] font-semibold mt-2">&bull; 1BHK to Villas</span>
-              </div>
+              </button>
 
-              <div className="bg-[#FAF8F5] border border-[#3C2A21]/10 p-6 rounded shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-6">
-                <div>
-                  <div className="w-10 h-10 rounded bg-[#3C2A21]/5 flex items-center justify-center text-[#BFA15F] mb-4">
-                    <Compass className="w-5 h-5" />
+              {/* Space Planning & Layout */}
+              <button
+                onClick={() => setSelectedService('space-planning')}
+                className="group text-left bg-[#FAF8F5] hover:bg-white border border-[#3C2A21]/10 hover:border-[#BFA15F] p-6 rounded shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between gap-6 cursor-pointer active:scale-98 w-full"
+                id="service-card-space-planning"
+              >
+                <div className="flex flex-col h-full justify-between">
+                  <div>
+                    <div className="w-10 h-10 rounded bg-[#3C2A21]/5 group-hover:bg-[#BFA15F]/10 flex items-center justify-center text-[#BFA15F] mb-4 transition-all duration-300">
+                      <Compass className="w-5 h-5 group-hover:rotate-45 transition-transform" />
+                    </div>
+                    <h3 className="font-serif text-base font-semibold text-[#3C2A21] leading-snug group-hover:text-[#BFA15F] transition-colors font-sans uppercase tracking-wider text-[13px]">Space Planning &amp; Layout</h3>
+                    <p className="font-sans text-xs text-[#6B625E] font-light leading-relaxed mt-2 pb-3 border-b border-[#3C2A21]/5">
+                      Clearance auditing, Vastu structural adjustments, and complete AutoCAD layout optimization to ensure intuitive, smooth circulation.
+                    </p>
+                    <ul className="mt-4 flex flex-col gap-1.5 font-sans text-[11px] text-[#6B625E]/90">
+                      <li className="flex items-center gap-1.5 font-medium text-stone-700">
+                        <span className="text-[#BFA15F]">&bull;</span> AutoCAD flow optimization
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Vastu direction &amp; orientation
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Path &amp; circulation tuning
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Room proportion auditing
+                      </li>
+                    </ul>
                   </div>
-                  <h3 className="font-serif text-base font-semibold text-[#3C2A21] leading-snug">Space Planning & Layout</h3>
-                  <p className="font-sans text-xs text-[#6B625E] font-light leading-relaxed mt-2">
-                    Clearance auditing, Vastu structural adjustments, and complete AutoCAD layout optimization to ensure intuitive, smooth circulation.
-                  </p>
+                  <div className="mt-6 flex items-center justify-between pt-3 border-t border-[#3C2A21]/5">
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#BFA15F] font-semibold mt-2">&bull; Optimization</span>
+                    <span className="text-[#BFA15F] text-xs font-semibold group-hover:translate-x-1.5 transition-transform duration-300">
+                      Learn More &rarr;
+                    </span>
+                  </div>
                 </div>
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#BFA15F] font-semibold mt-2">&bull; Optimization</span>
-              </div>
+              </button>
 
-              <div className="bg-[#FAF8F5] border border-[#3C2A21]/10 p-6 rounded shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-6">
-                <div>
-                  <div className="w-10 h-10 rounded bg-[#3C2A21]/5 flex items-center justify-center text-[#BFA15F] mb-4">
-                    <PenTool className="w-5 h-5" />
+              {/* Modular Kitchen & Wardrobe */}
+              <button
+                onClick={() => setSelectedService('modular-kitchen')}
+                className="group text-left bg-[#FAF8F5] hover:bg-white border border-[#3C2A21]/10 hover:border-[#BFA15F] p-6 rounded shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between gap-6 cursor-pointer active:scale-98 w-full"
+                id="service-card-modular-kitchen"
+              >
+                <div className="flex flex-col h-full justify-between">
+                  <div>
+                    <div className="w-10 h-10 rounded bg-[#3C2A21]/5 group-hover:bg-[#BFA15F]/10 flex items-center justify-center text-[#BFA15F] mb-4 transition-all duration-300">
+                      <PenTool className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    </div>
+                    <h3 className="font-serif text-base font-semibold text-[#3C2A21] leading-snug group-hover:text-[#BFA15F] transition-colors font-sans uppercase tracking-wider text-[13px]">Modular Kitchen &amp; Wardrobe</h3>
+                    <p className="font-sans text-xs text-[#6B625E] font-light leading-relaxed mt-2 pb-3 border-b border-[#3C2A21]/5">
+                      Custom modular cabinets, soft-close heavy-duty drawers, premium veneer finishes, and highly optimized kitchen layouts.
+                    </p>
+                    <ul className="mt-4 flex flex-col gap-1.5 font-sans text-[11px] text-[#6B625E]/90">
+                      <li className="flex items-center gap-1.5 font-medium text-stone-700">
+                        <span className="text-[#BFA15F]">&bull;</span> Work triangle layout mapping
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Soft-close hardware fixtures
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Premium veneer coating
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Heavy-duty storage systems
+                      </li>
+                    </ul>
                   </div>
-                  <h3 className="font-serif text-base font-semibold text-[#3C2A21] leading-snug">Modular Kitchen & Wardrobe</h3>
-                  <p className="font-sans text-xs text-[#6B625E] font-light leading-relaxed mt-2">
-                    Custom modular cabinets, soft-close heavy-duty drawers, premium veneer finishes, and highly optimized kitchen layouts.
-                  </p>
+                  <div className="mt-6 flex items-center justify-between pt-3 border-t border-[#3C2A21]/5">
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#BFA15F] font-semibold mt-2">&bull; Custom Storage</span>
+                    <span className="text-[#BFA15F] text-xs font-semibold group-hover:translate-x-1.5 transition-transform duration-300">
+                      Learn More &rarr;
+                    </span>
+                  </div>
                 </div>
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#BFA15F] font-semibold mt-2">&bull; Custom Storage</span>
-              </div>
+              </button>
 
-              <div className="bg-[#FAF8F5] border border-[#3C2A21]/10 p-6 rounded shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-6">
-                <div>
-                  <div className="w-10 h-10 rounded bg-[#3C2A21]/5 flex items-center justify-center text-[#BFA15F] mb-4">
-                    <Sparkles className="w-4.5 h-4.5" />
+              {/* Room Concepts */}
+              <button
+                onClick={() => setSelectedService('room-concepts')}
+                className="group text-left bg-[#FAF8F5] hover:bg-white border border-[#3C2A21]/10 hover:border-[#BFA15F] p-6 rounded shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between gap-6 cursor-pointer active:scale-98 w-full"
+                id="service-card-room-concepts"
+              >
+                <div className="flex flex-col h-full justify-between">
+                  <div>
+                    <div className="w-10 h-10 rounded bg-[#3C2A21]/5 group-hover:bg-[#BFA15F]/10 flex items-center justify-center text-[#BFA15F] mb-4 transition-all duration-300">
+                      <Sparkles className="w-4.5 h-4.5 group-hover:animate-pulse" />
+                    </div>
+                    <h3 className="font-serif text-base font-semibold text-[#3C2A21] leading-snug group-hover:text-[#BFA15F] transition-colors font-sans uppercase tracking-wider text-[13px]">Room Concepts</h3>
+                    <p className="font-sans text-xs text-[#6B625E] font-light leading-relaxed mt-2 pb-3 border-b border-[#3C2A21]/5">
+                      Atmospheric color stories, lighting placement, and texture layering for luxurious Living Rooms, tranquil Bedrooms, and interactive Kids Rooms.
+                    </p>
+                    <ul className="mt-4 flex flex-col gap-1.5 font-sans text-[11px] text-[#6B625E]/90">
+                      <li className="flex items-center gap-1.5 font-medium text-stone-700">
+                        <span className="text-[#BFA15F]">&bull;</span> Custom bedroom warm suites
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Playful creative kids rooms
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Dynamic accent textures
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Multi-tiered lighting plans
+                      </li>
+                    </ul>
                   </div>
-                  <h3 className="font-serif text-base font-semibold text-[#3C2A21] leading-snug">Room Concepts</h3>
-                  <p className="font-sans text-xs text-[#6B625E] font-light leading-relaxed mt-2">
-                    Atmospheric color stories, lighting placement, and texture layering for luxurious Living Rooms, tranquil Bedrooms, and interactive Kids Rooms.
-                  </p>
+                  <div className="mt-6 flex items-center justify-between pt-3 border-t border-[#3C2A21]/5">
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#BFA15F] font-semibold mt-2">&bull; Customized Rooms</span>
+                    <span className="text-[#BFA15F] text-xs font-semibold group-hover:translate-x-1.5 transition-transform duration-300">
+                      Learn More &rarr;
+                    </span>
+                  </div>
                 </div>
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#BFA15F] font-semibold mt-2">&bull; Customized Rooms</span>
-              </div>
+              </button>
 
-              <div className="bg-[#FAF8F5] border border-[#3C2A21]/10 p-6 rounded shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-6">
-                <div>
-                  <div className="w-10 h-10 rounded bg-[#3C2A21]/5 flex items-center justify-center text-[#BFA15F] mb-4">
-                    <CheckCircle className="w-4.5 h-4.5" />
+              {/* Turnkey Interior Execution */}
+              <button
+                onClick={() => setSelectedService('turnkey-execution')}
+                className="group text-left bg-[#FAF8F5] hover:bg-white border border-[#3C2A21]/10 hover:border-[#BFA15F] p-6 rounded shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between gap-6 cursor-pointer active:scale-98 w-full"
+                id="service-card-turnkey"
+              >
+                <div className="flex flex-col h-full justify-between">
+                  <div>
+                    <div className="w-10 h-10 rounded bg-[#3C2A21]/5 group-hover:bg-[#BFA15F]/10 flex items-center justify-center text-[#BFA15F] mb-4 transition-all duration-300">
+                      <CheckCircle className="w-4.5 h-4.5 group-hover:scale-110 transition-transform" />
+                    </div>
+                    <h3 className="font-serif text-base font-semibold text-[#3C2A21] leading-snug group-hover:text-[#BFA15F] transition-colors font-sans uppercase tracking-wider text-[13px]">Turnkey Interior Execution</h3>
+                    <p className="font-sans text-xs text-[#6B625E] font-light leading-relaxed mt-2 pb-3 border-b border-[#3C2A21]/5">
+                      Complete end-to-end site management—civil execution, painting, MEP coordination, furniture installation, and deep cleaning.
+                    </p>
+                    <ul className="mt-4 flex flex-col gap-1.5 font-sans text-[11px] text-[#6B625E]/90">
+                      <li className="flex items-center gap-1.5 font-medium text-stone-700">
+                        <span className="text-[#BFA15F]">&bull;</span> Dynamic project timelines
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Supervised plumbing &amp; MEP
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Expert on-site handholding
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <span className="text-[#BFA15F]">&bull;</span> Standard deep-cleaning prep
+                      </li>
+                    </ul>
                   </div>
-                  <h3 className="font-serif text-base font-semibold text-[#3C2A21] leading-snug">Turnkey Interior Execution</h3>
-                  <p className="font-sans text-xs text-[#6B625E] font-light leading-relaxed mt-2">
-                    Complete end-to-end site management—civil execution, painting, MEP coordination, furniture installation, and deep cleaning.
-                  </p>
+                  <div className="mt-6 flex items-center justify-between pt-3 border-t border-[#3C2A21]/5">
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#BFA15F] font-semibold mt-2">&bull; Absolute Peace of Mind</span>
+                    <span className="text-[#BFA15F] text-xs font-semibold group-hover:translate-x-1.5 transition-transform duration-300">
+                      Learn More &rarr;
+                    </span>
+                  </div>
                 </div>
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#BFA15F] font-semibold mt-2">&bull; Absolute Peace of Mind</span>
-              </div>
+              </button>
 
             </div>
 
@@ -431,6 +690,9 @@ export default function App() {
         </div>
       </section>
 
+      {/* DYNAMIC AUTO-SLIDING REAL COMPLETED RENOVATIONS PORTFOLIO CAROUSEL */}
+      <WorkCarousel />
+
       {/* 6. IMMERSIVE TACTILE MOOD SPACE PLAYGROUND */}
       <section id="inspiration" className="py-16 md:py-24 max-w-7xl mx-auto px-6 bg-[#FAF8F5]">
         <MoodBoardSimulator />
@@ -443,11 +705,9 @@ export default function App() {
         </div>
       </section>
 
-      {/* 7.5. INSTAGRAM REELS SPOTLIGHT */}
-      <section id="reels" className="bg-white py-16 md:py-24 border-t border-[#3C2A21]/15">
-        <div className="max-w-7xl mx-auto px-6">
-          <InstagramReels />
-        </div>
+      {/* 7.5 DESIGN JOURNAL BLOG SECTION (SEO/AEO/GEO EXCELLENCE) */}
+      <section id="journal" className="border-t border-[#3C2A21]/10 bg-[#FAF8F5]">
+        <BlogSection />
       </section>
 
       {/* 8. TESTIMONIAL CAROUSEL */}
@@ -581,6 +841,8 @@ export default function App() {
 
         </div>
       </section>
+        </>
+      )}
 
       {/* 10. STUDIO ATELIER DIGITAL FOOTER */}
       <Footer 
@@ -589,7 +851,21 @@ export default function App() {
           setPolicyTab(tab);
           setPolicyOpen(true);
         }}
+        onOpenPortal={() => setPortalOpen(true)}
       />
+
+      {/* SECURE STUDIO PORTAL OVERLAY */}
+      <AnimatePresence>
+        {portalOpen && (
+          <StudioPortal
+            onClose={() => setPortalOpen(false)}
+            onOpenBooking={() => {
+              setPortalOpen(false);
+              triggerBookingWithPack();
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* LEGAL & CONTACT POLICY MODAL OVERLAY */}
       <AnimatePresence>
@@ -714,6 +990,44 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* WHATSAPP INTERIOR ENQUIRY MODAL */}
+      <WhatsAppEnquiryModal
+        isOpen={whatsAppOpen}
+        onClose={() => setWhatsAppOpen(false)}
+        initialService={whatsAppInitialService}
+      />
+
+      {/* FLOATING WHATSAPP CTA BADGE */}
+      <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3">
+        <button
+          onClick={() => {
+            setWhatsAppInitialService('');
+            setWhatsAppOpen(true);
+          }}
+          className="group relative flex items-center justify-center w-14 h-14 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer border-none outline-none"
+          aria-label="Open WhatsApp Enquiry Form"
+          id="floating-whatsapp-cta"
+        >
+          {/* Subtle Outer Pulsing Wave */}
+          <span className="absolute inset-0 rounded-full bg-[#25D366]/40 animate-ping pointer-events-none group-hover:hidden"></span>
+          
+          {/* WhatsApp Custom SVG Path (Crisp and precise vectors) */}
+          <svg 
+            className="w-7 h-7 fill-current" 
+            viewBox="0 0 24 24" 
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.843.002-2.63-1.023-5.101-2.886-6.968C16.58 1.93 14.113.905 11.492.905 6.056.905 1.632 5.318 1.63 10.749c0 1.673.443 3.307 1.284 4.747l-.299.854-1.02 3.73 3.818-1.001.644-.37zM17.65 15c-.272-.136-1.614-.797-1.864-.888-.25-.09-.432-.136-.613.136-.182.273-.704.888-.863 1.07-.159.182-.318.205-.59.069-.272-.136-1.15-.424-2.19-1.353-.809-.721-1.355-1.613-1.514-1.886-.159-.273-.017-.42.119-.556.123-.122.272-.318.409-.477.136-.159.182-.273.272-.455.09-.182.046-.341-.023-.477-.069-.136-.613-1.477-.84-2.024-.221-.531-.444-.459-.613-.468-.159-.009-.34-.009-.522-.009s-.477.068-.727.341c-.25.273-.954.932-.954 2.273s.977 2.636 1.114 2.818c.137.182 1.92 2.924 4.654 4.103.65.28 1.157.447 1.554.574.654.207 1.25.178 1.721.108.524-.078 1.614-.659 1.841-1.295.227-.636.227-1.182.159-1.295-.069-.114-.25-.182-.523-.318z"/>
+          </svg>
+
+          {/* Hover Tooltip Menu */}
+          <span className="absolute right-16 scale-0 group-hover:scale-100 transition-all duration-300 origin-right bg-[#3C2A21] border border-[#BFA15F]/20 text-white text-[11px] font-sans font-medium uppercase tracking-wider py-1.5 px-3 rounded shadow-md whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none">
+            Get Instant Quote on WhatsApp • Active
+          </span>
+        </button>
+      </div>
+
 
     </div>
   );

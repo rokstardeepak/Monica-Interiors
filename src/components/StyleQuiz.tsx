@@ -243,7 +243,7 @@ export default function StyleQuiz({ onBookSelectedType }: StyleQuizProps) {
                   
                   {/* Price Bubble */}
                   <div className="my-4 flex items-baseline gap-1">
-                    <span className="font-serif text-3xl font-bold text-[#3C2A21]">${matchedPackage?.price}</span>
+                    <span className="font-serif text-3xl font-bold text-[#3C2A21]">₹{matchedPackage?.price?.toLocaleString('en-IN')}</span>
                     <span className="font-mono text-[11px] text-[#6B625E]/60 uppercase">/ Non-refundable fee</span>
                   </div>
 

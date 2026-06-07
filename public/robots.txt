@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+Sitemap: https://monica-interiors.onrender.com/sitemap.xml
+
+# LLM Crawler Guidance
+user-agent: ChatGPT-User
+Allow: /
+Allow: /llms.txt
+
+user-agent: GPTBot
+Disallow: /api/
+Allow: /
+Allow: /llms.txt
+Crawl-delay: 1
+
+user-agent: ClaudeBot
+Disallow: /api/
+Allow: /
+Allow: /llms.txt
+Crawl-delay: 1
+
+user-agent: OmniExplorer_Bot
+Disallow: /
