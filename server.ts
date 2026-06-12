@@ -1018,6 +1018,9 @@ app.post("/api/emails/send", async (req, res) => {
           user: smtpUser,
           pass: smtpPass,
         },
+        tls: {
+          rejectUnauthorized: false
+        }
       });
 
       // Construct standard iCalendar content
@@ -1033,8 +1036,8 @@ app.post("/api/emails/send", async (req, res) => {
         adminEmail: adminTargetEmail
       });
 
-      // 1. Send confirmation receipt to the CLIENT (with icalEvent invitation)
-      await transporter.sendMail({
+      // Prepare both sendMail promises to execute concurrently (cuts transaction time in half)
+      const sendClientMail = transporter.sendMail({
         from: `"${senderName}" <${senderEmail}>`,
         to: clientEmail,
         replyTo: senderEmail,
@@ -1140,7 +1143,7 @@ app.post("/api/emails/send", async (req, res) => {
         </html>
       `;
 
-      await transporter.sendMail({
+      const sendAdminMail = transporter.sendMail({
         from: `"${senderName} Notifications" <${senderEmail}>`,
         to: adminTargetEmail,
         replyTo: senderEmail,
@@ -1159,6 +1162,9 @@ app.post("/api/emails/send", async (req, res) => {
           }
         ]
       });
+
+      // Execute both SMTP transports together
+      await Promise.all([sendClientMail, sendAdminMail]);
 
       return res.json({
         success: true,
