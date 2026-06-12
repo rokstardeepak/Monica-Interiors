@@ -2,9 +2,10 @@ name: Keep Render App Alive
 on:
   schedule:
     - cron: '*/10 * * * *' # Runs every 10 minutes
+  workflow_dispatch:      # <-- Add this exact line!
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
       - name: Ping website
-        run: curl -s https://monica-interiors.onrender.com > /dev/null
+        run: curl -s https://your-app.onrender.com > /dev/null
