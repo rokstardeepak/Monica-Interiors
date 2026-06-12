@@ -36,6 +36,17 @@ try {
   if (projectId) {
     console.log("Environment check - GOOGLE_APPLICATION_CREDENTIALS:", process.env.GOOGLE_APPLICATION_CREDENTIALS);
     console.log("Environment check - Keys:", Object.keys(process.env).filter(k => k.includes("GOOGLE") || k.includes("FIREBASE") || k.includes("CREDENTIALS")));
+    
+    // Check if we can safely use Application Default Credentials (ADC)
+    // ADC is safe to fallback to if we are running on Google Cloud Platform (e.g. Cloud Run, GAE) or if GOOGLE_APPLICATION_CREDENTIALS is set.
+    // Otherwise, fallback directly to disk persistence to prevent crashing the server on external hosting platforms like Render.
+    const isGcpEnvironment = !!(
+      process.env.K_SERVICE ||
+      process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+      process.env.GAE_SERVICE ||
+      process.env.CLOUD_RUN_JOB
+    );
+
     let appInstance;
     if (getApps().length === 0) {
       if (clientEmail && privateKey) {
@@ -48,17 +59,28 @@ try {
             privateKey: formattedPrivateKey
           })
         });
-      } else {
+      } else if (isGcpEnvironment) {
         // Support Google Cloud Platform environments (e.g., AI Studio preview containers via Application Default Credentials)
         appInstance = initializeApp({
           projectId: projectId
         });
+      } else {
+        console.warn("⚠️ [Firebase Admin] Running in an external non-GCP hosting environment (e.g., Render) without explicit Service Account Credentials.");
+        console.warn("To enable Google Firestore database persistence, please generate a Service Account Key from your Firebase Console and add these Environment Variables on Render:");
+        console.warn("  - FIREBASE_CLIENT_EMAIL");
+        console.warn("  - FIREBASE_PRIVATE_KEY");
+        console.warn("  - FIREBASE_PROJECT_ID");
+        console.warn("  - FIREBASE_DATABASE_ID (optional)");
+        console.warn("Falling back to local 'bookings.json' disk storage for now.");
       }
     } else {
       appInstance = getApps()[0];
     }
-    db = databaseId ? getFirestore(appInstance, databaseId) : getFirestore(appInstance);
-    console.log("Firebase Admin Firestore initialized successfully with project ID:", projectId, "and database ID:", databaseId || "(default)");
+
+    if (appInstance) {
+      db = databaseId ? getFirestore(appInstance, databaseId) : getFirestore(appInstance);
+      console.log("Firebase Admin Firestore initialized successfully with project ID:", projectId, "and database ID:", databaseId || "(default)");
+    }
   } else {
     console.warn("No Firebase configuration found. Server is falling back to local disk persistence (bookings.json).");
   }
