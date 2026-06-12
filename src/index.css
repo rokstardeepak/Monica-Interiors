@@ -10,6 +10,7 @@ html {
   scroll-behavior: smooth;
   background-color: #FAF8F5;
   color: #3C2A21;
+  font-variant-numeric: lining-nums;
 }
 
 /* Hide scrollbar for layout elements but allow mouse dragging */

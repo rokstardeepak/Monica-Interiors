@@ -6,7 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, Lock, Shield, User, Search, Calendar, Mail, Phone, Clock, CreditCard, 
-  Check, CheckCircle2, AlertCircle, RefreshCw, BarChart3, Users, DollarSign, ExternalLink
+  Check, CheckCircle2, AlertCircle, RefreshCw, BarChart3, Users, DollarSign, ExternalLink,
+  Edit, Save
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -34,6 +35,8 @@ export default function StudioPortal({ onClose, onOpenBooking }: StudioPortalPro
 
   // Status updates
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [editingMeetId, setEditingMeetId] = useState<string | null>(null);
+  const [editingMeetValue, setEditingMeetValue] = useState<string>("");
 
   // Stats computation for Admin
   const [stats, setStats] = useState({
@@ -184,6 +187,38 @@ export default function StudioPortal({ onClose, onOpenBooking }: StudioPortalPro
     }
   };
 
+  // Update a booking's Google Meet link (Admin custom entry)
+  const updateBookingMeetLink = async (bookingId: string, meetLink: string) => {
+    setUpdatingId(bookingId);
+    try {
+      const response = await fetch('/api/bookings/update-meet-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId, meetLink })
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        // Refresh local bookings state
+        const updatedList = adminBookings.map(b => {
+          if (b.bookingId === bookingId) {
+            return { ...b, meetLink: data.booking?.meetLink || meetLink };
+          }
+          return b;
+        });
+        setAdminBookings(updatedList);
+        setEditingMeetId(null);
+      } else {
+        alert(data.error || 'Failed to update Google Meet link.');
+      }
+    } catch (err) {
+      console.error('Meet link update crash:', err);
+      alert('Network exception updating Google Meet link.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const handleLogout = () => {
     sessionStorage.removeItem('studio_admin_pin');
     setIsAdminAuthenticated(false);
@@ -192,7 +227,7 @@ export default function StudioPortal({ onClose, onOpenBooking }: StudioPortalPro
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-start justify-center p-4 py-8 md:py-16">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -305,7 +340,7 @@ export default function StudioPortal({ onClose, onOpenBooking }: StudioPortalPro
                         </p>
                         <button
                           onClick={onOpenBooking}
-                          className="mt-4 inline-flex items-center gap-1 bg-[#3C2A21] text-white text-[10px] uppercase tracking-widest font-mono px-3 py-2 rounded hover:bg-[#BFA15F] transition-colors"
+                          className="mt-4 inline-flex items-center gap-1 bg-[#3C2A21] text-white text-[10px] uppercase tracking-widest font-mono px-3 py-2 rounded hover:bg-[#BFA15F] hover:text-[#1E1714] transition-all"
                         >
                           Book consultation
                         </button>
@@ -386,6 +421,17 @@ export default function StudioPortal({ onClose, onOpenBooking }: StudioPortalPro
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* Bottom Close Button to exit the Tracker portal */}
+              <div className="flex justify-center mt-8 pt-6 border-t border-[#3C2A21]/10">
+                <button 
+                  onClick={onClose}
+                  className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest font-mono bg-[#3C2A21] hover:bg-[#BFA15F] text-[#FAF8F5] hover:text-[#3C2A21] border border-[#3C2A21] rounded transition-all cursor-pointer shadow-md duration-200"
+                  id="client-tracker-bottom-close-btn"
+                >
+                  Exit Portal ✕
+                </button>
+              </div>
             </div>
           )}
 
@@ -573,16 +619,57 @@ export default function StudioPortal({ onClose, onOpenBooking }: StudioPortalPro
                                   {/* Package */}
                                   <td className="p-4">
                                     <span className="font-medium text-stone-700 block">{b.packageName}</span>
-                                    {b.meetLink && (
-                                      <a 
-                                        href={b.meetLink}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 mt-0.5 font-mono"
-                                      >
-                                        Meet Space
-                                        <ExternalLink className="w-2.5 h-2.5" />
-                                      </a>
+                                    {editingMeetId === b.bookingId ? (
+                                      <div className="mt-1.5 flex items-center gap-1">
+                                        <input
+                                          type="text"
+                                          value={editingMeetValue}
+                                          onChange={(e) => setEditingMeetValue(e.target.value)}
+                                          className="bg-white border border-stone-300 text-[10px] font-mono rounded px-1.5 py-0.5 w-36 outline-none focus:border-[#BFA15F] text-stone-800"
+                                          placeholder="https://meet.google.com/..."
+                                          autoFocus
+                                        />
+                                        <button
+                                          onClick={() => updateBookingMeetLink(b.bookingId, editingMeetValue)}
+                                          className="p-1 text-emerald-600 hover:bg-emerald-50 rounded cursor-pointer"
+                                          title="Save Link"
+                                        >
+                                          <Save className="w-3 h-3" />
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingMeetId(null)}
+                                          className="p-1 text-stone-400 hover:bg-stone-50 rounded cursor-pointer"
+                                          title="Cancel"
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2 mt-1">
+                                        {b.meetLink ? (
+                                          <a 
+                                            href={b.meetLink}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 font-mono"
+                                          >
+                                            Meet Space
+                                            <ExternalLink className="w-2.5 h-2.5" />
+                                          </a>
+                                        ) : (
+                                          <span className="text-[10px] text-stone-400 font-mono italic">No Link</span>
+                                        )}
+                                        <button
+                                          onClick={() => {
+                                            setEditingMeetId(b.bookingId);
+                                            setEditingMeetValue(b.meetLink || "");
+                                          }}
+                                          className="p-0.5 text-stone-400 hover:text-[#BFA15F] hover:bg-stone-100 rounded transition cursor-pointer"
+                                          title="Edit Google Meet Link"
+                                        >
+                                          <Edit className="w-2.5 h-2.5" />
+                                        </button>
+                                      </div>
                                     )}
                                   </td>
 
@@ -641,6 +728,17 @@ export default function StudioPortal({ onClose, onOpenBooking }: StudioPortalPro
 
                 </div>
               )}
+
+              {/* Bottom Close Button to exit the Admin desk portal */}
+              <div className="flex justify-center mt-8 pt-6 border-t border-[#3C2A21]/10 w-full">
+                <button 
+                  onClick={onClose}
+                  className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest font-mono bg-[#3C2A21] hover:bg-[#BFA15F] text-[#FAF8F5] hover:text-[#3C2A21] border border-[#3C2A21] rounded transition-all cursor-pointer shadow-md duration-200"
+                  id="admin-dashboard-bottom-close-btn"
+                >
+                  Exit Portal ✕
+                </button>
+              </div>
 
             </div>
           )}

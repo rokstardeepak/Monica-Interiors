@@ -62,7 +62,7 @@ export default function BlogSection() {
 
           <h3 className="font-serif text-xl text-[#3C2A21] font-semibold mt-6">3. Why Monica Interiors Ranks High on Local Client Trust</h3>
           <p>
-            With over 6+ years of specialized luxury residential design, Monica Interiors bridges the gap between raw spatial utility and high-end aesthetic value. For clients looking to balance structural AutoCAD floor plans, custom modular kitchens, and Vastu orientation, our integrated atelier system provides:
+            With over 6+ years of specialized luxury residential design, Monica Interiors bridges the gap between raw spatial utility and high-end aesthetic value. For clients looking to balance structural AutoCAD floor plans, custom modular kitchens, and absolute spatial flow orientation, our integrated atelier system provides:
           </p>
           <div className="bg-[#FAF8F5] p-5 rounded border border-[#3C2A21]/10 my-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex gap-2">
@@ -177,14 +177,14 @@ export default function BlogSection() {
     },
     {
       id: 'art-3',
-      slug: 'vastu-friendly-space-planning-layouts',
-      title: 'Vastu-Friendly Modern Home Space Planning: Strategic Spacing for Mumbai Apartments',
-      excerpt: 'Achieving flow and quiet visual harmony in Mumbai apartments requires balancing AutoCAD layout science with age-old Vastu principles. Read our space planning masterclass.',
+      slug: 'ergonomic-space-planning-layouts',
+      title: 'Ergonomic Modern Home Space Planning: Strategic Spacing for Mumbai Apartments',
+      excerpt: 'Achieving flow and quiet visual harmony in Mumbai apartments requires balancing AutoCAD layout science with practical spatial psychology. Read our space planning masterclass.',
       date: 'May 28, 2026',
       author: 'Monica S. (Principal Designer)',
       readTime: '5 min read',
-      category: 'Space Planning & Vastu',
-      keywords: ['vastu interior designers in mumbai', 'space planning layout mumbai', 'vastu friendly spatial arrangement', 'living room planning vastu'],
+      category: 'Space Planning & Layout',
+      keywords: ['space planning layout mumbai', 'ergonomic spatial arrangement', 'living room planning', 'interior designer mumbai spacing'],
       image: 'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?auto=format&fit=crop&q=80&w=600',
       content: (
         <div className="space-y-6 text-[#6B625E] font-sans antialiased text-sm sm:text-base leading-relaxed">
@@ -192,15 +192,15 @@ export default function BlogSection() {
             “True layout balance is achieved when you step inside and feel an immediate, quiet sense of breathing space—completely free of heavy, crowded pathways.”
           </p>
           <p>
-            In space-starved cities, spatial flow and proper zoning layout can make or break your daily emotional health. More and more Indian homeowners seek certified <strong>Vastu interior designers in Mumbai</strong> to ensure that their premium modern apartments align with age-old scientific directions while retaining clean, sophisticated, contemporary aesthetics.
+            In space-starved cities, spatial flow and proper zoning layout can make or break your daily emotional health. More and more modern homeowners seek professional space planning to ensure that their premium modern apartments align with sleek ergonomics and natural movement while retaining clean, sophisticated, contemporary aesthetics.
           </p>
           <p>
-            At Monica Interiors, we take an architectural, layout-first approach. We ensure that your home layout behaves intuitively while honoring Vastu coordinates:
+            At Monica Interiors, we take an architectural, layout-first approach. We ensure that your home layout behaves intuitively with precise clearance guidelines:
           </p>
 
           <h3 className="font-serif text-xl text-[#3C2A21] font-semibold mt-6">1. Main Entrance and Foyer Spacing</h3>
           <p>
-            The entrance represents the gateway of energy. In Mumbai, flat layouts are often preset by developers, leaving little room for adjustments. To combat unfavorable directions:
+            The entrance represents the gateway of visual impression. In Mumbai, flat layouts are often preset by developers, leaving little room for adjustments. To maximize flow:
           </p>
           <ul className="list-disc pl-5 space-y-2 mt-2">
             <li>Ensure the foyer entry pathway is kept entirely clear. Avoid heavy, bulky shoe consoles near doors.</li>
@@ -208,19 +208,19 @@ export default function BlogSection() {
             <li>Use reflective surfaces or light wooden accents to artificially dilate narrow entryways.</li>
           </ul>
 
-          <h3 className="font-serif text-xl text-[#3C2A21] font-semibold mt-6">2. Kitchen Alignment: The Agneya Corner</h3>
+          <h3 className="font-serif text-xl text-[#3C2A21] font-semibold mt-6">2. Kitchen Alignment: The Golden Work Triangle</h3>
           <p>
-            According to standard Vastu, the <strong>Southeast (Agneya) quadrant</strong> coordinates fire. When designing a modular kitchen:
+            A high-performing modular kitchen relies on the <strong>Golden Work Triangle</strong> (the clearance paths between refrigerator, sink, and cooking hob):
           </p>
           <ul className="list-disc pl-5 space-y-2 mt-2">
-            <li>Position the cooking range or smart hob in the South-East zone so the chef faces towards the East while cooking.</li>
-            <li>Place wash basins, water purifiers, and continuous water inlets in the North or East zones. This maintains the essential separation of water and heat columns.</li>
-            <li>Keep heavy storage like custom double-door refrigerators in the South-West nodes.</li>
+            <li>Position the cooking range or smart hob with at least 3 feet of active counter space on either side.</li>
+            <li>Place wash basins and dishwashers with clear access to plumbing cols and away from thermal zones.</li>
+            <li>Keep food storage and cold chambers grouped at one end of the layout so primary prep tracks remain uninterrupted.</li>
           </ul>
 
-          <h3 className="font-serif text-xl text-[#3C2A21] font-semibold mt-6">3. Master Bedroom: South-West Stability</h3>
+          <h3 className="font-serif text-xl text-[#3C2A21] font-semibold mt-6">3. Master Bedroom: Silent Stability &amp; Layout</h3>
           <p>
-            A restful bedroom requires quiet luxury. Placing the master suite in the <strong>South-West (Nairutya) direction</strong> provides stability and deeper sleep:
+            A restful bedroom requires quiet luxury. Placing the master suite bed structure away from core draft lines provides stability and deeper sleep:
           </p>
           <p>
             Avoid placing the head of the bed directly under a solid concrete load-bearing beam, as this creates a subconscious sense of compression. In apartments where custom layouts force this setup, we construct a beautiful, fluid false ceiling with curved timber molding to redirect air currents and alleviate visual pressure.
@@ -277,7 +277,7 @@ export default function BlogSection() {
             Interior Insights by Monica Interiors
           </h2>
           <p className="font-sans text-sm md:text-base text-[#6B625E] font-light leading-relaxed max-w-2xl">
-            Ranked resources and localized guidelines written directly by the principal decorators at Monica Interiors. Designed to answer vital home improvement, Vastu orientation, modular kitchen design, and cost budgeting questions for homeowners based in Mumbai, Navi Mumbai, Thane, and across India.
+            Ranked resources and localized guidelines written directly by the principal decorators at Monica Interiors. Designed to answer vital home improvement, ergonomic space planning, modular kitchen design, and cost budgeting questions for homeowners based in Mumbai, Navi Mumbai, Thane, and across India.
           </p>
         </div>
 
@@ -427,7 +427,7 @@ export default function BlogSection() {
                       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                     }
                   }}
-                  className="whitespace-nowrap bg-[#3C2A21] hover:bg-[#BFA15F] hover:text-[#3C2A21] text-white px-6 py-3.5 text-xs font-mono font-semibold uppercase tracking-widest transition-all rounded shadow-md cursor-pointer active:scale-98"
+                  className="whitespace-nowrap bg-[#3C2A21] hover:bg-[#BFA15F] hover:text-[#1E1714] text-white px-6 py-3.5 text-xs font-mono font-semibold uppercase tracking-widest transition-all rounded shadow-md cursor-pointer active:scale-98"
                 >
                   Book consultation space
                 </button>

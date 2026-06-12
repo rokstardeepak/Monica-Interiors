@@ -7,9 +7,10 @@ import React, { useState, useEffect } from 'react';
 import { CONSULTATION_PACKAGES, COMPLEMENTARY_COLORS } from '../data';
 import { 
   Calendar, Clock, User, Mail, Phone, Lock, CreditCard, Check, 
-  ChevronRight, ArrowLeft, Loader2, Sparkles, Download, CheckCircle, Smartphone 
+  ChevronRight, ArrowLeft, Loader2, Sparkles, Download, CheckCircle, Smartphone, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { googleSignIn, createCalendarEventWithMeet, initAuth, getAccessToken, parseDateTimeSlot } from '../googleAuth';
 
 interface AppointmentBookingProps {
   onClose: () => void;
@@ -85,10 +86,42 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
     });
   };
 
+  // Helper to sanitize any malformed Google Meet link into standard format
+  const sanitizeMeetLink = (url: string | null | undefined): string => {
+    if (!url) return "";
+    let clean = url.trim();
+    if (!clean) return "";
+
+    const meetCodeRegex = /^[a-z]{3}-[a-z]{4}-[a-z]{3}$/i;
+    const rawCodeRegex = /^[a-z]{10}$/i;
+    if (meetCodeRegex.test(clean) || rawCodeRegex.test(clean)) {
+      return `https://meet.google.com/${clean.toLowerCase()}`;
+    }
+
+    try {
+      const urlObj = new URL(clean.startsWith('http') ? clean : 'https://' + clean);
+      const pathname = urlObj.pathname;
+
+      const codeMatch = pathname.match(/[a-z]{3}-[a-z]{4}-[a-z]{3}/i);
+      if (codeMatch) {
+        return `https://meet.google.com/${codeMatch[0].toLowerCase()}`;
+      }
+
+      const plainMatch = pathname.match(/[a-z]{10}/i);
+      if (plainMatch) {
+        const code = plainMatch[0].toLowerCase();
+        return `https://meet.google.com/${code.slice(0, 3)}-${code.slice(3, 7)}-${code.slice(7, 10)}`;
+      }
+    } catch (err) {
+      console.error("Error parsing Google Meet Link", err);
+    }
+    return clean;
+  };
+
   // Helper to generate elegant, unique, deterministic Google Meet links or retrieve customized link
   const generateMeetLink = (bookingId: string) => {
     if (razorpayConfig?.googleMeetLink && razorpayConfig.googleMeetLink.trim() !== "") {
-      return razorpayConfig.googleMeetLink.trim();
+      return sanitizeMeetLink(razorpayConfig.googleMeetLink);
     }
     const cleanId = (bookingId || '').replace(/[^a-zA-Z]/g, "").toLowerCase();
     const pad = (cleanId + "spacedesignmeet").slice(0, 10);
@@ -98,6 +131,89 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
   // Email Notification Dispatch States
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'simulated' | 'failed'>('idle');
   const [emailError, setEmailError] = useState<string | null>(null);
+
+  // Google Calendar Sync States & Handler
+  const [googleUser, setGoogleUser] = useState<any>(null);
+  const [googleToken, setGoogleToken] = useState<string | null>(null);
+  const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
+  const [syncSuccess, setSyncSuccess] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  // Load interactive Firebase Google session authentication observer
+  useEffect(() => {
+    const unsub = initAuth(
+      (user, token) => {
+        setGoogleUser(user);
+        setGoogleToken(token);
+      },
+      () => {
+        setGoogleUser(null);
+        setGoogleToken(null);
+      }
+    );
+    return () => unsub();
+  }, []);
+
+  const handleGoogleCalendarSync = async () => {
+    if (!bookingDetails) return;
+    setIsSyncingGoogle(true);
+    setSyncError(null);
+    try {
+      let activeToken = googleToken;
+
+      // 1. If we do not have a cached token, trigger authentic Google login
+      if (!activeToken) {
+        const authResult = await googleSignIn();
+        if (!authResult) {
+          throw new Error("No authorization returned from Google.");
+        }
+        activeToken = authResult.accessToken;
+        setGoogleToken(activeToken);
+        setGoogleUser(authResult.user);
+      }
+
+      // 2. Call Google Calendar and Meet REST APIs
+      const eventDetails = await createCalendarEventWithMeet(activeToken, {
+        packageName: bookingDetails.packageName,
+        dateStr: bookingDetails.date,
+        timeSlot: bookingDetails.time,
+        clientEmail: bookingDetails.clientEmail || clientEmail || "client@monicainteriors.com",
+        clientName: bookingDetails.clientName || clientName || "Monica Client",
+        bookingId: bookingDetails.bookingId
+      });
+
+      // 3. Post back real Google Meet URL mapping to server ledger
+      const res = await fetch('/api/bookings/update-meet-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: bookingDetails.bookingId,
+          meetLink: sanitizeMeetLink(eventDetails.meetUrl)
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error("Calendar event created on Google, but failed to synchronize link to database.");
+      }
+
+      // Update local state to display true active meet link
+      setBookingDetails(prev => prev ? { ...prev, meetLink: sanitizeMeetLink(eventDetails.meetUrl) } : null);
+      setSyncSuccess(true);
+    } catch (err: any) {
+      console.error("Google synchronization workflow failed:", err);
+      setSyncError(err?.message || "Google calendar synchronization cancelled.");
+    } finally {
+      setIsSyncingGoogle(false);
+    }
+  };
+
+  // Auto-schedule in the background if the customer user is already authenticated
+  useEffect(() => {
+    if (paymentComplete && bookingDetails && !syncSuccess && !isSyncingGoogle && googleToken) {
+      console.log("Auto-initiating Google Calendar sync using cached active credentials...");
+      handleGoogleCalendarSync();
+    }
+  }, [paymentComplete, !!bookingDetails, syncSuccess, googleToken]);
 
   // Trigger server-side secure email delivery
   const sendEmailNotification = async (details: any) => {
@@ -330,6 +446,11 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
 
   const selectedPackage = CONSULTATION_PACKAGES.find((pkg) => pkg.id === selectedPackId) || CONSULTATION_PACKAGES[1];
 
+  // Price formatting helper
+  const getPackagePriceDisplay = (pkg: typeof selectedPackage) => {
+    return `₹${pkg.price.toLocaleString('en-IN')}`;
+  };
+
   // Formatting helpers
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
@@ -448,11 +569,29 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
   const handleDownloadCalendarEvent = () => {
     if (!bookingDetails) return;
     
-    // Resolve date and times
-    // Date pattern: 2026-06-05
+    // Resolve date and times using the parseDateTimeSlot helper
+    const { startIso, endIso } = parseDateTimeSlot(selectedDate, selectedSlot);
+    
+    let startIsoUtc = '';
+    let endIsoUtc = '';
+    
+    try {
+      const startDateObj = new Date(startIso);
+      const endDateObj = new Date(endIso);
+      if (!isNaN(startDateObj.getTime()) && !isNaN(endDateObj.getTime())) {
+        startIsoUtc = startDateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        endIsoUtc = endDateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      }
+    } catch (_) {}
+
     const dt = selectedDate.replace(/-/g, '');
-    const startTimeStamp = dt + 'T100000Z'; // mock start
-    const endTimeStamp = dt + 'T110000Z';   // mock end
+    const dtStamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+    // Fallback if Date parsing fails
+    if (!startIsoUtc || !endIsoUtc) {
+      startIsoUtc = dt + 'T100000Z';
+      endIsoUtc = dt + 'T110000Z';
+    }
     
     const icsContent = [
       'BEGIN:VCALENDAR',
@@ -460,9 +599,9 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
       'PRODID:-//Monica Interiors//Monica Interiors Booking//EN',
       'BEGIN:VEVENT',
       'UID:' + bookingDetails.bookingId + '@monicainteriors.com',
-      'DTSTAMP:' + dt + 'T000000Z',
-      'DTSTART:' + startTimeStamp,
-      'DTEND:' + endTimeStamp,
+      'DTSTAMP:' + dtStamp,
+      'DTSTART:' + startIsoUtc,
+      'DTEND:' + endIsoUtc,
       'SUMMARY:' + bookingDetails.packageName + ' with Monica Interiors',
       'DESCRIPTION:Your premium interior design consultation. Live Google Meet Workspace URL: ' + (bookingDetails.meetLink || '') + ' - Ref ID: ' + bookingDetails.bookingId,
       'LOCATION:' + (bookingDetails.meetLink || 'Google Meet Client Workspace'),
@@ -481,21 +620,22 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-start justify-center p-4 py-8 md:py-16">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         className="bg-[#FAF8F5] text-[#3C2A21] w-full max-w-4xl min-h-[500px] border border-[#3C2A21]/15 shadow-2xl flex flex-col md:flex-row relative rounded-lg overflow-hidden"
         id="booking-portal-card"
       >
-        {/* Right Close indicator */}
+        {/* Absolute Premium Close Button - Styled as a responsive, elegant circle badge that works beautifully on dark (mobile header) and light (desktop container) surfaces */}
         {!isProcessingPayment && (
           <button 
             onClick={onClose}
-            className="absolute top-4 right-4 z-20 p-2 text-[#3C2A21] hover:text-[#BFA15F] font-sans text-xs uppercase tracking-widest bg-[#FAF8F5] border border-[#3C2A21]/10 rounded shadow-sm focus:outline-none"
+            className="absolute top-4 right-4 z-20 p-2 text-xs font-bold uppercase tracking-widest font-mono bg-[#FAF8F5] md:bg-white text-[#3C2A21] hover:bg-[#BFA15F] hover:text-[#1E1714] border border-[#3C2A21]/15 hover:border-[#3C2A21]/30 rounded-full transition-all cursor-pointer shadow-md duration-150 flex items-center justify-center hover:scale-105"
             id="close-booking-portal"
+            title="Exit Portal ✕"
           >
-            Close ✕
+            <X className="w-4 h-4" />
           </button>
         )}
 
@@ -527,7 +667,7 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                 </div>
                 <div>
                   <span className="text-[10px] font-mono uppercase text-[#FAF8F5]/40 block">Design Consultation Fee:</span>
-                  <span className="text-xs font-sans block mt-0.5">₹{selectedPackage.price.toLocaleString('en-IN')}</span>
+                  <span className="text-xs font-sans block mt-0.5">{getPackagePriceDisplay(selectedPackage)}</span>
                 </div>
               </div>
 
@@ -546,7 +686,7 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
           <div className="border-t border-[#FAF8F5]/10 pt-4 mt-8 flex flex-col gap-2">
             <div className="flex justify-between items-baseline">
               <span className="font-sans text-xs text-[#FAF8F5]/50">Consultation Fee</span>
-              <span className="font-serif text-sm">₹{selectedPackage.price.toLocaleString('en-IN')}</span>
+              <span className="font-serif text-sm">{getPackagePriceDisplay(selectedPackage)}</span>
             </div>
             <div className="flex justify-between items-baseline">
               <span className="font-sans text-xs text-[#FAF8F5]/50 flex gap-1 items-center">
@@ -556,7 +696,7 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
             </div>
             <div className="flex justify-between items-baseline border-t border-[#FAF8F5]/15 pt-2 mt-1">
               <span className="font-sans text-xs font-medium uppercase text-[#BFA15F]">Direct Due:</span>
-              <span className="font-serif text-xl font-bold text-[#FAF8F5]">₹{selectedPackage.price.toLocaleString('en-IN')}</span>
+              <span className="font-serif text-xl font-bold text-[#FAF8F5]">{getPackagePriceDisplay(selectedPackage)}</span>
             </div>
             <div className="mt-4 flex items-center justify-center gap-1 text-[10px] font-mono text-[#FAF8F5]/40 uppercase tracking-widest text-center">
               <Lock className="w-3 h-3 text-[#BFA15F]" />
@@ -568,31 +708,33 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
         {/* MAIN BODY WORKSPACE (Steps) */}
         <div className="flex-grow p-6 md:p-8 flex flex-col justify-between overflow-x-hidden">
           
-          {/* Progress Markers bar */}
+          {/* Progress Markers bar - Formatted with horizontal nowrap & right-padding to stay perfectly aligned and never overlap with the absolute Close button */}
           {!paymentComplete && (
-            <div className="flex items-center justify-between border-b border-[#3C2A21]/10 pb-4 mb-6 pr-20 md:pr-24">
-              {[
-                { s: 1, name: 'Service' },
-                { s: 2, name: 'Schedule' },
-                { s: 3, name: 'Details' },
-                { s: 4, name: 'Checkout' }
-              ].map((m) => (
-                <div key={m.s} className="flex items-center gap-1.5 sm:gap-2">
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono ${
-                    step === m.s 
-                      ? 'bg-[#3C2A21] text-white' 
-                      : step > m.s ? 'bg-[#BFA15F] text-white' : 'bg-[#3C2A21]/10 text-[#3C2A21]/40'
-                  }`}>
-                    {step > m.s ? '✓' : m.s}
+            <div className="flex flex-row items-center justify-between border-b border-[#3C2A21]/10 pb-4 mb-6 pr-12 md:pr-14 flex-nowrap overflow-x-auto select-none no-scrollbar" id="booking-steps-header">
+              <div className="flex flex-row items-center gap-x-2 sm:gap-x-4 flex-nowrap w-full justify-between">
+                {[
+                  { s: 1, name: 'Service' },
+                  { s: 2, name: 'Schedule' },
+                  { s: 3, name: 'Details' },
+                  { s: 4, name: 'Checkout' }
+                ].map((m) => (
+                  <div key={m.s} className="flex items-center gap-1 sm:gap-1.5 shrink-0 flex-nowrap">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono shrink-0 ${
+                      step === m.s 
+                        ? 'bg-[#3C2A21] text-white font-semibold' 
+                        : step > m.s ? 'bg-[#BFA15F] text-white' : 'bg-[#3C2A21]/10 text-[#3C2A21]/40'
+                    }`}>
+                      {step > m.s ? '✓' : m.s}
+                    </div>
+                    <span className={`text-[10px] sm:text-xs font-sans tracking-wide uppercase font-medium whitespace-nowrap shrink-0 ${
+                      step === m.s ? 'text-[#3C2A21]' : 'text-[#6B625E]/50'
+                    }`}>
+                      {m.name}
+                    </span>
+                    {m.s < 4 && <ChevronRight className="w-3 h-3 text-stone-300 md:inline shrink-0" />}
                   </div>
-                  <span className={`text-[10px] sm:text-xs font-sans tracking-wide uppercase font-medium ${
-                    step === m.s ? 'text-[#3C2A21]' : 'text-[#6B625E]/50'
-                  }`}>
-                    {m.name}
-                  </span>
-                  {m.s < 4 && <ChevronRight className="w-3 h-3 text-stone-300 hidden sm:inline" />}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 
@@ -637,15 +779,32 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                           }`}
                           id={`book-pack-${pkg.id}`}
                         >
-                          <div className="flex-grow">
-                            <span className="font-sans text-[11px] font-mono text-[#BFA15F] tracking-widest block uppercase mb-0.5">
-                              {pkg.duration} Consultation
-                            </span>
-                            <span className="font-serif text-base font-semibold block text-[#3C2A21]">{pkg.name}</span>
-                            <p className="font-sans text-xs text-[#6B625E] font-light leading-relaxed mt-1">{pkg.description}</p>
+                          <div className="flex-grow text-left">
+                            {pkg.id === 'c3' ? (
+                              <div className="flex flex-col text-left">
+                                <span className="font-serif text-lg font-bold text-[#3C2A21] block tracking-tight leading-none mb-2 select-none" id="turnkey-masterplan-price-label">
+                                  450 psq ft
+                                </span>
+                                <span className="font-serif text-lg font-semibold block text-[#3C2A21] leading-tight select-none font-medium text-stone-800">
+                                  Turnkey Luxury Masterplan
+                                </span>
+                              </div>
+                            ) : (
+                              <>
+                                <span className="font-sans text-[11px] font-mono text-[#BFA15F] tracking-widest block uppercase mb-0.5">
+                                  {pkg.duration} Consultation
+                                </span>
+                                <span className="font-serif text-base font-semibold block text-[#3C2A21]">{pkg.name}</span>
+                              </>
+                            )}
+                            <p className="font-sans text-xs text-[#6B625E] font-light leading-relaxed mt-1.5">{pkg.description}</p>
                           </div>
                           <div className="flex flex-col items-end flex-shrink-0">
-                            <span className="font-serif text-lg font-bold text-[#3C2A21]">₹{pkg.price.toLocaleString('en-IN')}</span>
+                            {pkg.id !== 'c3' ? (
+                              <span className="font-serif text-lg font-bold text-[#3C2A21]">₹{pkg.price.toLocaleString('en-IN')}</span>
+                            ) : (
+                              <span className="font-serif text-lg font-bold text-[#3C2A21] whitespace-nowrap">₹450 psqft</span>
+                            )}
                             {selectedPackId === pkg.id ? (
                               <span className="bg-[#BFA15F] text-white p-1 rounded-full mt-2">
                                 <Check className="w-3.5 h-3.5" />
@@ -659,6 +818,8 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                         </button>
                       ))}
                     </div>
+
+                    {/* Turnkey pricing is now flat standard flat-rate */}
                   </motion.div>
                 )}
 
@@ -918,7 +1079,7 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                         </div>
                         <div className="flex justify-between items-center text-xs">
                           <span className="text-stone-500">Amount Payable:</span>
-                          <span className="font-serif font-bold text-base text-[#3C2A21]">₹{selectedPackage.price.toLocaleString('en-IN')}</span>
+                          <span className="font-serif font-bold text-base text-[#3C2A21]">{getPackagePriceDisplay(selectedPackage)}</span>
                         </div>
                       </div>
 
@@ -928,7 +1089,7 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                         id="razorpay-trigger-btn"
                       >
                         <CreditCard className="w-4 h-4 text-[#BFA15F]" />
-                        Initialize Razorpay Payment • ₹{selectedPackage.price.toLocaleString('en-IN')}
+                        Initialize Razorpay Payment • {getPackagePriceDisplay(selectedPackage)}
                       </button>
 
                       <p className="text-[10px] text-center font-mono text-stone-400 uppercase tracking-widest mt-1">
@@ -968,7 +1129,7 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                 </h4>
                 
                 <p className="font-sans text-xs text-[#6B625E] font-light max-w-md mt-2 leading-relaxed">
-                  Your appointment is successfully booked! Thank you, <strong>{bookingDetails.clientName}</strong>! Confirmation details has been sent to <strong>{bookingDetails.clientEmail}</strong> with joining instruction details.
+                  Your appointment is successfully booked! Thank you, <strong>{bookingDetails.clientName}</strong>. A confirmation has been prepared and sent to <strong>{bookingDetails.clientEmail}</strong> with your meeting details.
                 </p>
 
                 {/* Real-time Email Dispatch System Status Widget */}
@@ -977,8 +1138,8 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                     <div className="bg-amber-500/5 text-amber-800 border border-amber-500/20 rounded-md p-3 flex gap-2.5 items-center font-sans text-xs">
                       <Loader2 className="w-4 h-4 text-[#BFA15F] animate-spin shrink-0" />
                       <div>
-                        <strong className="font-semibold block text-[11px] uppercase tracking-wider">Transactional Delivery</strong>
-                        <span className="font-light block text-[10px] opacity-90 mt-0.5">Authorizing premium receipt message for {bookingDetails.clientEmail}...</span>
+                        <strong className="font-semibold block text-[11px] uppercase tracking-wider text-[#7F675B]">Sending Confirmation...</strong>
+                        <span className="font-light block text-[10px] opacity-90 mt-0.5">Preparing booking details for {bookingDetails.clientEmail}...</span>
                       </div>
                     </div>
                   )}
@@ -987,9 +1148,9 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                     <div className="bg-green-50 text-green-800 border border-green-200 rounded-md p-3.5 flex gap-2.5 items-start font-sans text-[11px]">
                       <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0 mt-0.5 font-bold">✓</div>
                       <div>
-                        <strong className="font-semibold block uppercase tracking-wider text-green-900 text-[10px]">Inbox Delivery Complete</strong>
+                        <strong className="font-semibold block uppercase tracking-wider text-green-900 text-[10px]">Email Sent Successfully</strong>
                         <span className="font-light block opacity-90 mt-0.5 leading-relaxed">
-                          Your premium email receipt has been securely dispatched via TLS and is ready in your inbox!
+                          Your confirmation details have been sent to your inbox. Please check your spam folder if you do not receive it shortly!
                         </span>
                       </div>
                     </div>
@@ -999,25 +1160,35 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                     <div className="bg-stone-100 text-stone-700 border border-stone-200 rounded-md p-3.5 flex gap-2.5 items-start font-sans text-[11px]">
                       <div className="w-5 h-5 rounded-full bg-[#BFA15F]/20 flex items-center justify-center text-[#BFA15F] shrink-0 mt-0.5 text-xs font-serif italic">i</div>
                       <div>
-                        <strong className="font-semibold block uppercase tracking-wider text-stone-800 text-[10px]">Test Mode Confirmation Active</strong>
+                        <strong className="font-semibold block uppercase tracking-wider text-stone-800 text-[10px]">Booking Logged</strong>
                         <span className="font-light block opacity-90 mt-0.5 leading-relaxed">
-                          Your reservation has been securely logged on the server and is queryable in the Owner Portal.
+                          Your reservation has been recorded in our database and can be searched or reviewed inside the Owner Portal.
                         </span>
                       </div>
                     </div>
                   )}
 
                   {emailStatus === 'failed' && (
-                    <div className="bg-red-50 text-red-800 border border-red-200 rounded-md p-3.5 flex gap-2.5 items-start font-sans text-[11px]">
-                      <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0 mt-0.5">✕</div>
+                    <div className="bg-stone-50 text-stone-700 border border-stone-200 rounded-md p-3.5 flex gap-2.5 items-start font-sans text-[11px]">
+                      <div className="w-5 h-5 rounded-full bg-[#BFA15F]/10 flex items-center justify-center text-[#BFA15F] shrink-0 mt-0.5 text-stone-600 font-bold">✓</div>
                       <div>
-                        <strong className="font-semibold block uppercase tracking-wider text-red-900 text-[10px]">Delivery Pipeline Aborted</strong>
+                        <strong className="font-semibold block uppercase tracking-wider text-stone-800 text-[10px]">Booking Confirmed</strong>
                         <span className="font-light block opacity-90 mt-0.5 leading-relaxed">
-                          SMTP endpoint lookup failed check parameters: {emailError}
+                          Your booking has been saved. We were unable to dispatch the email automatically, but our studio team will check back with you shortly!
                         </span>
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Calendar invitation info block */}
+                <div className="w-full max-w-sm mt-5 bg-[#BFA15F]/10 border border-[#BFA15F]/20 rounded-lg p-3.5 text-left font-sans text-[11px] flex flex-col gap-1.5 leading-relaxed">
+                  <div className="flex items-center gap-1.5 text-[#3C2A21] font-semibold">
+                    <span className="text-[10px] uppercase font-mono">⚡ Automated Calendar Sync</span>
+                  </div>
+                  <p className="text-[#6B625E]">
+                    An official calendar invitation has been dispatched to <strong>{bookingDetails.clientEmail}</strong>. On acceptance, this appointment and the active Google Meet link will be added to your calendar.
+                  </p>
                 </div>
 
                 {/* Digital receipt box */}
@@ -1042,20 +1213,30 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                     <div className="flex flex-col gap-1 pb-2 border-b border-stone-100">
                       <div className="flex justify-between items-center w-full">
                         <span className="font-medium text-[#6B625E]">Google Meet Room:</span>
-                        <a 
-                          href={bookingDetails.meetLink} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          className="text-[#BFA15F] hover:underline font-mono text-[10px] font-semibold break-all text-right max-w-[200px]"
-                        >
-                          {bookingDetails.meetLink}
-                        </a>
+                        {bookingDetails.meetLink.includes('spacedesignmeet') ? (
+                          <span className="text-[#3C2A21]/50 font-mono text-[10px] italic text-right bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200">
+                            Host Sync Pending
+                          </span>
+                        ) : (
+                          <a 
+                            href={bookingDetails.meetLink} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="text-[#BFA15F] hover:underline font-mono text-[10px] font-semibold break-all text-right max-w-[200px]"
+                          >
+                            {bookingDetails.meetLink}
+                          </a>
+                        )}
                       </div>
-                      {!razorpayConfig?.googleMeetLink && (
-                        <p className="text-[10px] text-[#6B625E]/70 font-sans italic leading-normal text-right mt-1">
-                          💡 If Google says "Check your meeting code" for a dynamic room code, Monica will activate &amp; register it right at the time of your call. To specify a permanent recurring room instead, set GOOGLE_MEET_LINK in environmental variables.
+                      {bookingDetails.meetLink.includes('spacedesignmeet') && !razorpayConfig?.googleMeetLink ? (
+                        <p className="text-[10px] text-[#6B625E]/80 font-sans italic leading-normal text-right mt-1 bg-stone-50/50 p-2 rounded border border-dashed border-stone-200">
+                          💡 This is a reserved meeting code. To register and activate it instantly on Google, click <strong>"Sign In &amp; Add To Google Calendar"</strong> above. Once synced, it is verified and ready for call.
                         </p>
-                      )}
+                      ) : !razorpayConfig?.googleMeetLink ? (
+                        <p className="text-[10px] text-emerald-700 font-sans font-semibold leading-normal text-right mt-1 bg-emerald-50 p-1.5 rounded border border-emerald-100">
+                          ✓ This meeting code is live, registered, and active on Google Meet!
+                        </p>
+                      ) : null}
                     </div>
                   )}
                   <div className="flex justify-between">
@@ -1109,15 +1290,15 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                 <button
                   disabled={(step === 2 && !validateStep2()) || (step === 3 && !validateStep3())}
                   onClick={handleNextStep}
-                  className={`flex items-center gap-1 px-5 py-2.5 text-xs font-sans font-medium uppercase tracking-widest transition-all ${
+                  className={`group flex items-center gap-1 px-5 py-2.5 text-xs font-sans font-medium uppercase tracking-widest transition-all ${
                     (step === 2 && !validateStep2()) || (step === 3 && !validateStep3())
                       ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
-                      : 'bg-[#3C2A21] hover:bg-[#1E2941] text-[#FAF8F5]'
+                      : 'bg-[#3C2A21] hover:bg-[#BFA15F] hover:text-[#1E1714] text-[#FAF8F5]'
                   }`}
                   id="booking-step-next-btn"
                 >
                   Retrieve Next
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-4 h-4 transition-colors" />
                 </button>
               ) : (
                 <div />
@@ -1139,7 +1320,7 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
           >
             {/* Header: Designed to resemble Razorpay's premium Checkout widget */}
             <div className="bg-[#121420] p-5 flex justify-between items-center border-b border-slate-800">
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 text-left">
                 <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#3399cc] flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#3399cc] animate-ping" />
                   Razorpay Sandbox
@@ -1149,7 +1330,7 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
               </div>
               <div className="text-right">
                 <span className="text-slate-400 text-[9px] uppercase font-mono tracking-wider block">Price Due</span>
-                <span className="font-bold text-lg font-mono text-[#3399cc]">₹{selectedPackage.price.toLocaleString('en-IN')}</span>
+                <span className="font-bold text-lg font-mono text-[#3399cc]">{getPackagePriceDisplay(selectedPackage)}</span>
               </div>
             </div>
 
@@ -1199,7 +1380,7 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                       onClick={handleSimulatedRazorpaySuccess}
                       className="w-full bg-[#3399cc] hover:bg-[#2c88b7] text-white py-2.5 rounded font-sans font-semibold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer mt-1"
                     >
-                      Pay UPI ₹{selectedPackage.price.toLocaleString('en-IN')}
+                      Pay UPI • {getPackagePriceDisplay(selectedPackage)}
                     </button>
                     <span className="text-[10px] text-[#BFA15F] bg-[#BFA15F]/10 p-2 rounded text-center block leading-relaxed">
                       💡 Connected to sandbox environment. Click Pay to simulate a live bank transaction flow!
@@ -1209,8 +1390,8 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                   <div className="flex flex-col gap-3 min-h-[160px] justify-center text-left">
                     <span className="text-slate-400 text-[11px] font-medium uppercase font-mono tracking-wider">Simulate Card Terminal</span>
                     <div className="bg-[#121420] border border-slate-700 p-3 rounded flex flex-col gap-2">
-                      <span className="text-[10px] font-mono text-slate-500 block">CARD NUMBER</span>
-                      <span className="text-xs font-mono tracking-widest text-[#3399cc]">4111 2222 3333 4444</span>
+                      <span className="text-[10px] font-mono text-slate-500 block text-left">CARD NUMBER</span>
+                      <span className="text-xs font-mono tracking-widest text-[#3399cc] text-left">4111 2222 3333 4444</span>
                       <div className="flex justify-between text-[11px] font-mono text-slate-400 mt-1">
                         <span>EXP: 12/29</span>
                         <span>CVV: 123</span>
@@ -1221,7 +1402,7 @@ export default function AppointmentBooking({ onClose, preSelectedPackageId }: Ap
                       onClick={handleSimulatedRazorpaySuccess}
                       className="w-full bg-[#3399cc] hover:bg-[#2c88b7] text-white py-2.5 rounded font-sans font-semibold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer mt-1"
                     >
-                      Pay Card ₹{selectedPackage.price.toLocaleString('en-IN')}
+                      Pay Card • {getPackagePriceDisplay(selectedPackage)}
                     </button>
                   </div>
                 )}

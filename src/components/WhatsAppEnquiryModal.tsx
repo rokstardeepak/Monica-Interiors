@@ -74,15 +74,15 @@ export default function WhatsAppEnquiryModal({ isOpen, onClose, initialService =
 
     // Build absolute high-contrast structured text message with numbered list for cross-device compatibility
     const messageLines = [
-      `*NEW DESIGN ENQUIRY — MONICA INTERIORS*`,
+      `NEW DESIGN ENQUIRY — MONICA INTERIORS`,
       `------------------------------------------`,
-      `1. *Name:* ${formData.name}`,
-      `2. *Contact:* ${formData.phone}`,
-      `3. *Location:* ${finalLocation || 'Mumbai Area'}`,
-      `4. *Category:* ${formData.spaceType} Services`,
-      `5. *Primary Interest:* ${finalService}`,
-      `6. *Property Layout:* ${formData.propertySize}`,
-      formData.customNotes ? `7. *Brief / Notes:* ${formData.customNotes}` : '',
+      `1. Name: ${formData.name}`,
+      `2. Contact: ${formData.phone}`,
+      `3. Location: ${finalLocation || 'Mumbai Area'}`,
+      `4. Category: ${formData.spaceType} Services`,
+      `5. Primary Interest: ${finalService}`,
+      `6. Property Layout: ${formData.propertySize}`,
+      formData.customNotes ? `7. Brief / Notes: ${formData.customNotes}` : '',
       `------------------------------------------`
     ].filter(Boolean);
 
@@ -360,7 +360,7 @@ export default function WhatsAppEnquiryModal({ isOpen, onClose, initialService =
                         value={formData.customNotes}
                         onChange={handleChange}
                         className="w-full bg-white border border-[#3C2A21]/15 px-3 py-2 text-sm text-[#3C2A21] rounded placeholder-stone-400 focus:outline-none focus:border-[#BFA15F]"
-                        placeholder="Tell us about special color grids, Vastu wishes or custom ceilings..."
+                        placeholder="Tell us about special color grids, design preferences or custom ceilings..."
                       />
                     </div>
 

@@ -1,0 +1,30 @@
+{
+  "entities": {
+    "Booking": {
+      "title": "Booking",
+      "description": "Represents an interior design consultation appointment booking.",
+      "type": "object",
+      "properties": {
+        "bookingId": { "type": "string", "description": "The unique ID of the booking" },
+        "packageName": { "type": "string", "description": "Name of the design package booked" },
+        "date": { "type": "string", "description": "Date of the booking" },
+        "time": { "type": "string", "description": "Time of the booking" },
+        "clientName": { "type": "string", "description": "Name of the client" },
+        "clientEmail": { "type": "string", "description": "Email address of the client" },
+        "clientPhone": { "type": "string", "description": "Contact number of the client" },
+        "amountPaid": { "type": "number", "description": "Escrow transaction payment amount" },
+        "meetLink": { "type": "string", "description": "The Google Meet or spatial design room link" },
+        "status": { "type": "string", "description": "Current status of the booking" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "ISO timestamp of creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "ISO timestamp of last update" }
+      },
+      "required": ["bookingId", "clientName", "clientEmail"]
+    }
+  },
+  "firestore": {
+    "bookings": {
+      "schema": "Booking",
+      "description": "Global user consultation bookings record collection."
+    }
+  }
+}

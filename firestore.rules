@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny catch-all to prevent unauthorised access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Secure bookings collection
+    match /bookings/{bookingId} {
+      allow create: if request.resource.data.bookingId == bookingId && isValidBooking(request.resource.data);
+      allow update: if request.resource.data.bookingId == bookingId && isValidBooking(request.resource.data);
+      allow read: if true;
+    }
+  }
+
+  function isValidBooking(data) {
+    return data.bookingId is string &&
+           data.clientName is string &&
+           data.clientEmail is string;
+  }
+}

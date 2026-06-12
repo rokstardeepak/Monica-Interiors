@@ -204,12 +204,6 @@ export default function App() {
             </AnimatePresence>
           </div>
 
-          <p className="font-sans text-sm md:text-base text-stone-200 max-w-2xl leading-relaxed font-light">
-            <strong className="text-white block font-serif text-lg sm:text-xl md:text-2xl font-normal mb-2 leading-snug">
-              Transforming homes into timeless spaces
-            </strong>
-            Monica Interiors | Luxury Interior Design specializing in high-end, hand-crafted architectural sanctuaries.
-          </p>
 
           {/* Luxury Studio Badging */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 border-y border-white/10 py-5 w-full max-w-3xl font-sans mt-2">
@@ -236,7 +230,7 @@ export default function App() {
               id="hero-book-btn"
             >
               <Calendar className="w-4 h-4" />
-              Book Consult
+              Book consultation
             </button>
             <button
               onClick={() => {
@@ -244,11 +238,11 @@ export default function App() {
                 window.scrollTo({ top: galleryY + window.pageYOffset - 100, behavior: 'smooth' });
                 setActiveSection('projects');
               }}
-              className="flex items-center justify-center gap-2.5 border border-white/20 hover:border-white text-white py-4 px-8 text-xs uppercase tracking-[0.2em] font-medium transition-all backdrop-blur-md"
+              className="group flex items-center justify-center gap-2.5 border border-white/20 hover:border-[#BFA15F] hover:bg-[#BFA15F] hover:text-[#1E1714] text-white py-4 px-8 text-xs uppercase tracking-[0.2em] font-medium transition-all backdrop-blur-md"
               id="hero-explore-btn"
             >
               View Portfolio
-              <ArrowRight className="w-4 h-4 ml-1" />
+              <ArrowRight className="w-4 h-4 ml-1 text-white group-hover:text-[#1E1714] transition-colors" />
             </button>
           </div>
 
@@ -287,49 +281,56 @@ export default function App() {
               <p className="font-sans text-sm md:text-base text-[#6B625E] font-light leading-relaxed">
                 Transforming homes into timeless spaces. With over 6+ years of specialized luxury expertise, we design and build bespoke 2BHK, 3BHK, and Villas, operating across Mumbai, Navi Mumbai, Delhi, and Rajasthan. From layout clearance audits to end-to-end turnkey handovers, we deliver uncompromising premium quality.
               </p>
-              <div className="flex gap-6 border-t border-[#3C2A21]/10 pt-6 mt-2">
+              <div className="grid grid-cols-3 gap-2 sm:gap-6 border-t border-[#3C2A21]/10 pt-6 mt-2">
                 <div className="flex flex-col">
-                  <span className="font-serif text-3xl font-semibold text-[#3C2A21]">100%</span>
-                  <span className="font-sans text-[10px] uppercase text-[#6B625E] tracking-wider mt-1">Turnkey Delivery</span>
+                  <span className="font-serif text-xl sm:text-3xl font-bold text-[#3C2A21] tracking-tight">100%</span>
+                  <span className="font-sans text-[9px] sm:text-[10px] uppercase text-[#3C2A21] font-medium tracking-wider mt-1 leading-tight">Turnkey Delivery</span>
                 </div>
-                <div className="flex flex-col border-l border-[#3C2A21]/10 pl-6">
-                  <span className="font-serif text-3xl font-semibold text-[#3C2A21]">Premium</span>
-                  <span className="font-sans text-[10px] uppercase text-[#6B625E] tracking-wider mt-1">Sourced Materials</span>
+                <div className="flex flex-col border-l border-[#3C2A21]/10 pl-2.5 sm:pl-6">
+                  <span className="font-serif text-xl sm:text-3xl font-bold text-[#3C2A21] tracking-tight">Premium</span>
+                  <span className="font-sans text-[9px] sm:text-[10px] uppercase text-[#3C2A21] font-medium tracking-wider mt-1 leading-tight">Sourced Materials</span>
                 </div>
-                <div className="flex flex-col border-l border-[#3C2A21]/10 pl-6">
-                  <span className="font-serif text-3xl font-semibold text-[#3C2A21]">6+ Yrs</span>
-                  <span className="font-sans text-[10px] uppercase text-[#6B625E] tracking-wider mt-1">Design Trust</span>
+                <div className="flex flex-col border-l border-[#3C2A21]/10 pl-2.5 sm:pl-6">
+                  <span className="font-serif text-xl sm:text-3xl font-bold text-[#3C2A21] tracking-tight">6+ Yrs</span>
+                  <span className="font-sans text-[9px] sm:text-[10px] uppercase text-[#3C2A21] font-medium tracking-wider mt-1 leading-tight">Design Trust</span>
                 </div>
               </div>
             </div>
 
             {/* End-to-End Service Coverage Board */}
-            <div className="bg-gradient-to-br from-[#1E1714] to-[#2B201C] p-6 md:p-8 rounded-lg shadow-md border border-[#BFA15F]/20 text-[#FAF8F5] relative overflow-hidden" id="end-to-end-services-panel">
+            <div 
+              className="p-6 sm:p-8 rounded-lg shadow-md border border-[#BFA15F]/35 text-[#FAF8F5] relative overflow-hidden w-full" 
+              style={{ backgroundColor: '#1E1714', backgroundImage: 'linear-gradient(135deg, #1E1714 0%, #2B201C 100%)' }}
+              id="end-to-end-services-panel"
+            >
               <div className="absolute top-0 right-0 w-48 h-48 bg-[#BFA15F]/5 rounded-bl-full pointer-events-none" />
-              <div className="relative z-10 flex flex-col lg:flex-row justify-between gap-8 lg:items-center">
-                <div className="flex flex-col gap-2.5 max-w-xl">
+              <div className="relative z-10 flex flex-col lg:flex-row justify-between gap-8 lg:items-center w-full">
+                <div className="flex flex-col gap-3 w-full lg:max-w-xl">
                   <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#BFA15F]" />
-                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#BFA15F] font-bold">End-to-End Service Portfolio Range</span>
+                    <span className="w-2 h-2 rounded-full bg-[#BFA15F]" />
+                    <span className="font-mono text-[9px] sm:text-xs uppercase tracking-[0.2em] text-[#BFA15F] font-bold">End-to-End Service Portfolio Range</span>
                   </div>
-                  <h3 className="font-serif text-2xl md:text-3xl font-light tracking-tight text-white leading-tight">We offer end-to-end interior services</h3>
-                  <p className="font-sans text-xs sm:text-sm text-stone-300 font-light leading-relaxed">
-                    At Monica Interiors, we take absolute care of conceptual designs, planning, premium material sourcing, Vastu-alignment, and complete master turnkey execution for both residential and commercial projects.
+                  <h3 className="font-serif text-2xl sm:text-3xl md:text-4xl text-white leading-tight font-light">We offer end-to-end interior services</h3>
+                  <p className="font-sans text-xs sm:text-sm text-stone-100 font-normal leading-relaxed">
+                    At Monica Interiors, we take absolute care of conceptual designs, planning, premium material sourcing, spatial ergonomics, and complete master turnkey execution for both residential and commercial projects.
                   </p>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:min-w-[500px]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full lg:min-w-[500px]">
                   {/* Residential Card */}
-                  <div className="bg-white/5 border border-white/10 rounded p-4 flex flex-col gap-2 hover:border-[#BFA15F]/40 transition-all duration-300">
-                    <div className="flex items-center gap-2 text-[#BFA15F] font-semibold text-xs uppercase tracking-wider font-sans">
+                  <div 
+                    className="border border-white/20 rounded p-5 flex flex-col gap-3 hover:border-[#BFA15F]/60 transition-all duration-300 shadow-inner"
+                    style={{ backgroundColor: 'rgba(42, 32, 28, 0.85)' }}
+                  >
+                    <div className="flex items-center gap-2 text-[#BFA15F] font-bold text-xs sm:text-sm uppercase tracking-wider font-sans">
                       <span>🏡 Residential Interior Services</span>
                     </div>
-                    <p className="font-sans text-xs text-stone-300 font-light leading-relaxed">
+                    <p className="font-sans text-xs sm:text-sm text-stone-100 font-normal leading-relaxed">
                       Custom, high-contrast atmospheric sanctuaries tailored to make your home spaces feel elegant, functional, and spacious:
                     </p>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
+                    <div className="flex flex-wrap gap-2 mt-2">
                       {['Bedroom', 'Living Room', 'Dining Room', 'Modular Kitchen'].map((tag) => (
-                        <span key={tag} className="bg-white/10 text-white text-[10px] px-2 py-0.5 rounded font-sans hover:bg-[#BFA15F]/20 hover:text-white transition-colors cursor-default">
+                        <span key={tag} className="bg-white/15 text-white text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded font-sans hover:bg-[#BFA15F]/35 hover:text-white transition-colors cursor-default border border-white/10">
                           {tag}
                         </span>
                       ))}
@@ -337,16 +338,19 @@ export default function App() {
                   </div>
 
                   {/* Commercial Card */}
-                  <div className="bg-white/5 border border-white/10 rounded p-4 flex flex-col gap-2 hover:border-[#BFA15F]/40 transition-all duration-300">
-                    <div className="flex items-center gap-2 text-[#BFA15F] font-semibold text-xs uppercase tracking-wider font-sans">
+                  <div 
+                    className="border border-white/20 rounded p-5 flex flex-col gap-3 hover:border-[#BFA15F]/60 transition-all duration-300 shadow-inner"
+                    style={{ backgroundColor: 'rgba(42, 32, 28, 0.85)' }}
+                  >
+                    <div className="flex items-center gap-2 text-[#BFA15F] font-bold text-xs sm:text-sm uppercase tracking-wider font-sans">
                       <span>🏢 Commercial Interior Services</span>
                     </div>
-                    <p className="font-sans text-xs text-stone-300 font-light leading-relaxed">
+                    <p className="font-sans text-xs sm:text-sm text-stone-100 font-normal leading-relaxed">
                       Strategic workspace layouts designed to align with branding layout standards, optimize customer flow, and boost output:
                     </p>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
+                    <div className="flex flex-wrap gap-2 mt-2">
                       {['Offices', 'Boutiques', 'Cafes', 'Plus More'].map((tag) => (
-                        <span key={tag} className="bg-white/10 text-white text-[10px] px-2 py-0.5 rounded font-sans hover:bg-[#BFA15F]/20 hover:text-white transition-colors cursor-default">
+                        <span key={tag} className="bg-white/15 text-white text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded font-sans hover:bg-[#BFA15F]/35 hover:text-white transition-colors cursor-default border border-white/10">
                           {tag}
                         </span>
                       ))}
@@ -411,14 +415,14 @@ export default function App() {
                     </div>
                     <h3 className="font-serif text-base font-semibold text-[#3C2A21] leading-snug group-hover:text-[#BFA15F] transition-colors font-sans uppercase tracking-wider text-[13px]">Space Planning &amp; Layout</h3>
                     <p className="font-sans text-xs text-[#6B625E] font-light leading-relaxed mt-2 pb-3 border-b border-[#3C2A21]/5">
-                      Clearance auditing, Vastu structural adjustments, and complete AutoCAD layout optimization to ensure intuitive, smooth circulation.
+                      Clearance auditing, ergonomics adjustments, and complete AutoCAD layout optimization to ensure intuitive, smooth circulation.
                     </p>
                     <ul className="mt-4 flex flex-col gap-1.5 font-sans text-[11px] text-[#6B625E]/90">
                       <li className="flex items-center gap-1.5 font-medium text-stone-700">
                         <span className="text-[#BFA15F]">&bull;</span> AutoCAD flow optimization
                       </li>
                       <li className="flex items-center gap-1.5">
-                        <span className="text-[#BFA15F]">&bull;</span> Vastu direction &amp; orientation
+                        <span className="text-[#BFA15F]">&bull;</span> Ergonomic spacing &amp; flow
                       </li>
                       <li className="flex items-center gap-1.5">
                         <span className="text-[#BFA15F]">&bull;</span> Path &amp; circulation tuning
@@ -789,21 +793,21 @@ export default function App() {
           </h2>
 
           <p className="font-sans text-sm md:text-base text-[#6B625E] font-light leading-relaxed max-w-xl relative z-10">
-            Reservations provide full direct material layering review, AutoCAD space clearance assessments, and secure transaction receipts. Reach out to Monica directly at <strong className="text-[#3C2A21]">+91 9137062574</strong> or book below.
+            Reservations provide full direct material layering review, AutoCAD space clearance assessments, and secure transaction receipts. Reach out to Monica directly at <strong className="text-[#3C2A21] whitespace-nowrap">+91 9137062574</strong> or book below.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 w-full justify-center pt-2 relative z-10">
             <button
               onClick={() => triggerBookingWithPack('c2')}
-              className="flex items-center justify-center gap-2.5 bg-[#3C2A21] text-[#FAF8F5] hover:bg-[#1E2941] active:scale-98 text-xs uppercase tracking-[0.2em] font-medium transition-all py-4 px-10 shadow-lg shadow-[#3C2A21]/15"
+              className="group flex items-center justify-center gap-2.5 bg-[#3C2A21] text-[#FAF8F5] hover:bg-[#BFA15F] hover:text-[#1E1714] active:scale-98 text-xs uppercase tracking-[0.2em] font-medium transition-all py-4 px-10 shadow-lg shadow-[#3C2A21]/15"
               id="cta-scheduler-book-btn"
             >
-              <Calendar className="w-4.5 h-4.5 text-[#BFA15F]" />
+              <Calendar className="w-4.5 h-4.5 text-[#BFA15F] group-hover:text-[#1E1714] transition-colors" />
               Secure Consultation Space
             </button>
             <a
               href="mailto:monicainteriors23@gmail.com"
-              className="flex items-center justify-center gap-2 border border-[#3C2A21]/20 hover:border-[#3C2A21] text-[#3C2A21] text-xs uppercase tracking-[0.2em] font-medium transition-all py-4 px-10 bg-white"
+              className="group flex items-center justify-center gap-2.5 bg-[#3C2A21] text-[#FAF8F5] hover:bg-[#BFA15F] hover:text-[#1E1714] active:scale-98 text-xs uppercase tracking-[0.2em] font-medium transition-all py-4 px-10 shadow-lg shadow-[#3C2A21]/15"
               id="cta-scheduler-email-btn"
             >
               Email Flyer Inquiry
@@ -812,10 +816,10 @@ export default function App() {
               href="https://maps.app.goo.gl/De1WH2acvmSum1HVA"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center gap-2 border border-[#BFA15F] hover:bg-[#BFA15F] hover:text-white text-[#3C2A21] text-xs uppercase tracking-[0.2em] font-medium transition-all py-4 px-10 bg-white"
+              className="group flex items-center justify-center gap-2.5 bg-[#3C2A21] text-[#FAF8F5] hover:bg-[#BFA15F] hover:text-[#1E1714] active:scale-98 text-xs uppercase tracking-[0.2em] font-medium transition-all py-4 px-10 shadow-lg shadow-[#3C2A21]/15"
               id="cta-scheduler-gmb-btn"
             >
-              <MapPin className="w-4 h-4 text-[#BFA15F]" />
+              <MapPin className="w-4.5 h-4.5 text-[#BFA15F] group-hover:text-[#1E1714] transition-colors" />
               GMB Location
             </a>
           </div>
@@ -976,10 +980,10 @@ export default function App() {
                       // preselect relevant package based on project category
                       triggerBookingWithPack(selectedProject.category === 'Commercial' ? 'c3' : 'c2');
                     }}
-                    className="w-full flex items-center justify-center gap-2 bg-[#3C2A21] text-[#FAF8F5] hover:bg-[#1E2941] py-3 text-xs uppercase tracking-[0.15em] font-medium transition-colors"
+                    className="group w-full flex items-center justify-center gap-2 bg-[#3C2A21] text-[#FAF8F5] hover:bg-[#BFA15F] hover:text-[#1E1714] py-3 text-xs uppercase tracking-[0.15em] font-medium transition-all"
                     id="lightbox-book-pack-btn"
                   >
-                    <Calendar className="w-4 h-4 text-[#BFA15F]" />
+                    <Calendar className="w-4 h-4 text-[#BFA15F] group-hover:text-[#1E1714] transition-colors" />
                     Book Material Consultation
                   </button>
                 </div>

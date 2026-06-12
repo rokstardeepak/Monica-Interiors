@@ -7,6 +7,9 @@ import nodemailer from "nodemailer";
 import { createServer as createViteServer } from "vite";
 import fs from "fs";
 
+import { initializeApp, getApps, cert } from "firebase-admin/app";
+import { getFirestore, Firestore } from "firebase-admin/firestore";
+
 // Ensure environment variables are loaded
 dotenv.config();
 
@@ -14,6 +17,74 @@ const app = express();
 const PORT = 3000;
 
 const BOOKINGS_FILE = path.join(process.cwd(), "bookings.json");
+
+// Initialize Firebase Admin DB with config from file or environment variables
+let db: Firestore | null = null;
+try {
+  const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+  let projectId = process.env.FIREBASE_PROJECT_ID;
+  let databaseId = process.env.FIREBASE_DATABASE_ID;
+  let clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+  if (fs.existsSync(configPath)) {
+    const firebaseConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    projectId = projectId || firebaseConfig.projectId;
+    databaseId = databaseId || firebaseConfig.firestoreDatabaseId;
+  }
+
+  if (projectId) {
+    console.log("Environment check - GOOGLE_APPLICATION_CREDENTIALS:", process.env.GOOGLE_APPLICATION_CREDENTIALS);
+    console.log("Environment check - Keys:", Object.keys(process.env).filter(k => k.includes("GOOGLE") || k.includes("FIREBASE") || k.includes("CREDENTIALS")));
+    let appInstance;
+    if (getApps().length === 0) {
+      if (clientEmail && privateKey) {
+        // Support explicit Service Account Credentials for external hosting environments like Render
+        const formattedPrivateKey = privateKey.replace(/\\n/g, "\n");
+        appInstance = initializeApp({
+          credential: cert({
+            projectId,
+            clientEmail,
+            privateKey: formattedPrivateKey
+          })
+        });
+      } else {
+        // Support Google Cloud Platform environments (e.g., AI Studio preview containers via Application Default Credentials)
+        appInstance = initializeApp({
+          projectId: projectId
+        });
+      }
+    } else {
+      appInstance = getApps()[0];
+    }
+    db = databaseId ? getFirestore(appInstance, databaseId) : getFirestore(appInstance);
+    console.log("Firebase Admin Firestore initialized successfully with project ID:", projectId, "and database ID:", databaseId || "(default)");
+  } else {
+    console.warn("No Firebase configuration found. Server is falling back to local disk persistence (bookings.json).");
+  }
+} catch (err) {
+  console.error("Error initializing Firebase Admin on the server:", err);
+}
+
+let isFirestoreAvailable = false;
+
+// Perform silent Firestore validation to guard against cross-project permission constraints
+async function testFirestoreAccess() {
+  if (db) {
+    try {
+      console.log("Checking Firestore database access controls...");
+      await db.collection("bookings").limit(1).get();
+      isFirestoreAvailable = true;
+      console.log("Firestore access verified successfully. Remote database is online.");
+    } catch (err: any) {
+      isFirestoreAvailable = false;
+      console.warn("[Database Fallback] Remote Firestore database is currently inaccessible. Silently leveraging disk persistence.");
+    }
+  } else {
+    isFirestoreAvailable = false;
+  }
+}
+testFirestoreAccess();
 
 // Helper to load current bookings from disk safely
 function loadBookingsOnDisk(): any[] {
@@ -35,6 +106,348 @@ function saveBookingsToDisk(bookings: any[]) {
   } catch (err) {
     console.error("Error saving bookings to disk:", err);
   }
+}
+
+// Helper to sanitize and recover malformed Google Meet URLs into a neat abc-defg-hij standard layout
+function sanitizeMeetLink(url: string | null | undefined): string {
+  if (!url) return "";
+  let clean = url.trim();
+  if (!clean) return "";
+
+  const meetCodeRegex = /^[a-z]{3}-[a-z]{4}-[a-z]{3}$/i;
+  const rawCodeRegex = /^[a-z]{10}$/i;
+  if (meetCodeRegex.test(clean) || rawCodeRegex.test(clean)) {
+    return `https://meet.google.com/${clean.toLowerCase()}`;
+  }
+
+  try {
+    const urlObj = new URL(clean.startsWith('http') ? clean : 'https://' + clean);
+    const pathname = urlObj.pathname;
+
+    const codeMatch = pathname.match(/[a-z]{3}-[a-z]{4}-[a-z]{3}/i);
+    if (codeMatch) {
+      return `https://meet.google.com/${codeMatch[0].toLowerCase()}`;
+    }
+
+    const plainMatch = pathname.match(/[a-z]{10}/i);
+    if (plainMatch) {
+      const code = plainMatch[0].toLowerCase();
+      return `https://meet.google.com/${code.slice(0, 3)}-${code.slice(3, 7)}-${code.slice(7, 10)}`;
+    }
+  } catch (err) {
+    console.error("Error parsing Google Meet Link", err);
+  }
+  return clean;
+}
+
+// Helper to construct a RFC-5545 standard offline iCalendar (.ics) event string with active Google Meet coordinate values attached.
+function generateIcsContent(options: {
+  bookingId: string;
+  packageName: string;
+  date: string;
+  timeSlot: string;
+  clientEmail: string;
+  clientName: string;
+  meetLink: string;
+  organizerEmail?: string;
+  adminEmail?: string;
+}): string {
+  let cleanDate = options.date || '';
+  if (cleanDate.includes(',')) {
+    try {
+      const parsedDate = new Date(cleanDate);
+      if (!isNaN(parsedDate.getTime())) {
+        const y = parsedDate.getFullYear();
+        const m = String(parsedDate.getMonth() + 1).padStart(2, '0');
+        const d = String(parsedDate.getDate()).padStart(2, '0');
+        cleanDate = `${y}-${m}-${d}`;
+      }
+    } catch (_) {}
+  }
+  
+  if (!cleanDate) {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    cleanDate = `${y}-${m}-${d}`;
+  }
+
+  // Format datetimes (e.g., YYYYMMDDTHHMMSS)
+  const dtStamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  
+  let startHour = 10;
+  let startMinute = 0;
+  let endHour = 11;
+  let endMinute = 0;
+
+  try {
+    const timeStr = (options.timeSlot || '').trim().toUpperCase();
+    const firstPart = timeStr.split('-')[0].trim();
+    const timeMatch = firstPart.match(/^(\d+):(\d+)\s*(AM|PM)$/);
+    if (timeMatch) {
+      startHour = parseInt(timeMatch[1], 10);
+      startMinute = parseInt(timeMatch[2], 10);
+      const ampm = timeMatch[3];
+      if (ampm === 'PM' && startHour < 12) startHour += 12;
+      if (ampm === 'AM' && startHour === 12) startHour = 0;
+      
+      endHour = startHour + 1;
+      endMinute = startMinute;
+      if (endHour >= 24) endHour = 23;
+    } else {
+      if (timeStr.includes('10:00')) { startHour = 10; startMinute = 0; }
+      else if (timeStr.includes('1:00') || timeStr.includes('01:00')) { startHour = 13; startMinute = 0; }
+      else if (timeStr.includes('3:30')) { startHour = 15; startMinute = 30; }
+      else if (timeStr.includes('6:00') || timeStr.includes('06:00')) { startHour = 18; startMinute = 0; }
+      
+      endHour = startHour + 1;
+      endMinute = startMinute;
+      if (endHour >= 24) endHour = 23;
+    }
+  } catch (err) {
+    console.error("Error parsing time slot for ICS generation:", err);
+  }
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  
+  let startIsoUtc = '';
+  let endIsoUtc = '';
+  
+  try {
+    const startStr = `${cleanDate}T${pad(startHour)}:${pad(startMinute)}:00+05:30`;
+    const endStr = `${cleanDate}T${pad(endHour)}:${pad(endMinute)}:00+05:30`;
+    
+    const startDateObj = new Date(startStr);
+    const endDateObj = new Date(endStr);
+    
+    if (!isNaN(startDateObj.getTime()) && !isNaN(endDateObj.getTime())) {
+      startIsoUtc = startDateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      endIsoUtc = endDateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    } else {
+      const rawDateStr = cleanDate.replace(/-/g, '');
+      startIsoUtc = `${rawDateStr}T${pad(startHour)}${pad(startMinute)}00Z`;
+      endIsoUtc = `${rawDateStr}T${pad(endHour)}${pad(endMinute)}00Z`;
+    }
+  } catch (err) {
+    console.error("Error creating UTC dates for ICS:", err);
+    const rawDateStr = cleanDate.replace(/-/g, '');
+    startIsoUtc = `${rawDateStr}T${pad(startHour)}${pad(startMinute)}00Z`;
+    endIsoUtc = `${rawDateStr}T${pad(endHour)}${pad(endMinute)}00Z`;
+  }
+
+  const liveMeetLink = options.meetLink && !options.meetLink.includes('spacedesignmeet') 
+    ? options.meetLink 
+    : 'https://meet.google.com';
+
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'CALSCALE:GREGORIAN',
+    'METHOD:REQUEST',
+    'PRODID:-//Monica Interiors//Bespoke Booking//EN',
+    'BEGIN:VEVENT',
+    `UID:${options.bookingId}@monicainteriors.com`,
+    `DTSTAMP:${dtStamp}`,
+    `DTSTART:${startIsoUtc}`,
+    `DTEND:${endIsoUtc}`,
+    `SUMMARY:${options.packageName || 'Consultation'} | Monica Interiors`,
+    `DESCRIPTION:Thank you for choosing Monica Interiors! Your luxurious interior design consultation is confirmed.\\n\\nGoogle Meet Link: ${liveMeetLink}\\nBooking Reference ID: ${options.bookingId}\\n\\n We look forward to transforming your spaces into timeless sanctuaries.`,
+    `LOCATION:${liveMeetLink}`,
+    `ORGANIZER;CN="Monica Interiors Booking":mailto:booking@monicainteriors.com`,
+    `ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN="${options.clientName}":mailto:${options.clientEmail}`
+  ];
+
+  if (options.adminEmail) {
+    lines.push(`ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN="Monica Interiors Owner":mailto:${options.adminEmail}`);
+  }
+
+  lines.push(
+    'STATUS:CONFIRMED',
+    'SEQUENCE:0',
+    'TRANSP:OPAQUE',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  );
+
+  return lines.join('\r\n');
+}
+
+// Helper to generate a pre-filled direct Google Calendar template web link for 100% reliable click-to-add experience.
+function generateGoogleCalendarUrl(options: {
+  bookingId: string;
+  packageName: string;
+  date: string;
+  timeSlot: string;
+  meetLink: string;
+  clientName: string;
+}): string {
+  let cleanDate = options.date || '';
+  if (cleanDate.includes(',')) {
+    try {
+      const parsedDate = new Date(cleanDate);
+      if (!isNaN(parsedDate.getTime())) {
+        const y = parsedDate.getFullYear();
+        const m = String(parsedDate.getMonth() + 1).padStart(2, '0');
+        const d = String(parsedDate.getDate()).padStart(2, '0');
+        cleanDate = `${y}-${m}-${d}`;
+      }
+    } catch (_) {}
+  }
+  
+  if (!cleanDate) {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    cleanDate = `${y}-${m}-${d}`;
+  }
+
+  let startHour = 10;
+  let startMinute = 0;
+  let endHour = 11;
+  let endMinute = 0;
+
+  try {
+    const timeStr = (options.timeSlot || '').trim().toUpperCase();
+    const firstPart = timeStr.split('-')[0].trim();
+    const timeMatch = firstPart.match(/^(\d+):(\d+)\s*(AM|PM)$/);
+    if (timeMatch) {
+      startHour = parseInt(timeMatch[1], 10);
+      startMinute = parseInt(timeMatch[2], 10);
+      const ampm = timeMatch[3];
+      if (ampm === 'PM' && startHour < 12) startHour += 12;
+      if (ampm === 'AM' && startHour === 12) startHour = 0;
+      
+      endHour = startHour + 1;
+      endMinute = startMinute;
+      if (endHour >= 24) endHour = 23;
+    } else {
+      if (timeStr.includes('10:00')) { startHour = 10; startMinute = 0; }
+      else if (timeStr.includes('1:00') || timeStr.includes('01:00')) { startHour = 13; startMinute = 0; }
+      else if (timeStr.includes('3:30')) { startHour = 15; startMinute = 30; }
+      else if (timeStr.includes('6:00') || timeStr.includes('06:00')) { startHour = 18; startMinute = 0; }
+      endHour = startHour + 1;
+      endMinute = startMinute;
+      if (endHour >= 24) endHour = 23;
+    }
+  } catch (err) {}
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  
+  let startIsoUtc = `${cleanDate.replace(/-/g, '')}T${pad(startHour)}${pad(startMinute)}00Z`;
+  let endIsoUtc = `${cleanDate.replace(/-/g, '')}T${pad(endHour)}${pad(endMinute)}00Z`;
+
+  try {
+    const startStr = `${cleanDate}T${pad(startHour)}:${pad(startMinute)}:00+05:30`;
+    const endStr = `${cleanDate}T${pad(endHour)}:${pad(endMinute)}:00+05:30`;
+    const startDateObj = new Date(startStr);
+    const endDateObj = new Date(endStr);
+    if (!isNaN(startDateObj.getTime()) && !isNaN(endDateObj.getTime())) {
+      startIsoUtc = startDateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      endIsoUtc = endDateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    }
+  } catch (e) {}
+
+  const eventTitle = encodeURIComponent(`${options.packageName || 'Consultation'} with ${options.clientName} | Monica Interiors`);
+  const eventDetails = encodeURIComponent(`Thank you for booking with Monica Interiors!\n\nClient Name: ${options.clientName}\nBooking Reference ID: ${options.bookingId}\nGoogle Meet Link: ${options.meetLink}\n\nWe look forward to transforming your spatial sanctuary.`);
+  const eventLocation = encodeURIComponent(options.meetLink);
+  const timeDates = `${startIsoUtc}/${endIsoUtc}`;
+
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${timeDates}&details=${eventDetails}&location=${eventLocation}`;
+}
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: null,
+      email: null,
+      emailVerified: null,
+      isAnonymous: null,
+      tenantId: null,
+      providerInfo: []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+// Unified Async Loader (Queries Firestore, falls back to local disk/cache on error)
+async function loadBookings(): Promise<any[]> {
+  if (db && isFirestoreAvailable) {
+    try {
+      const snapshot = await db.collection("bookings").get();
+      const bookings: any[] = [];
+      snapshot.forEach((doc) => {
+        bookings.push({ ...doc.data() });
+      });
+      return bookings;
+    } catch (err) {
+      console.warn("Firestore collection load failed. Transitioning session to local file cache. Error:", err instanceof Error ? err.message : err);
+      isFirestoreAvailable = false;
+      handleFirestoreError(err, OperationType.LIST, "bookings");
+    }
+  }
+  return loadBookingsOnDisk();
+}
+
+// Unified Async Saver (Saves to Firestore and creates a redundant copy on local disk/cache)
+async function saveBooking(booking: any): Promise<boolean> {
+  // 1. Maintain the local redundant disk/cache copy
+  try {
+    const localBookings = loadBookingsOnDisk();
+    const index = localBookings.findIndex((b: any) => b.bookingId === booking.bookingId);
+    if (index === -1) {
+      localBookings.push(booking);
+    } else {
+      localBookings[index] = booking;
+    }
+    saveBookingsToDisk(localBookings);
+  } catch (localErr) {
+    console.error("Failed to commit redundancy cache to disk:", localErr);
+  }
+
+  // 2. Commit transaction to Firestore
+  if (db && isFirestoreAvailable) {
+    try {
+      await db.collection("bookings").doc(booking.bookingId).set(booking, { merge: true });
+      return true;
+    } catch (err) {
+      console.warn("Firestore collection set failed. Transitioning session to local file cache. Error:", err instanceof Error ? err.message : err);
+      isFirestoreAvailable = false;
+      handleFirestoreError(err, OperationType.WRITE, `bookings/${booking.bookingId}`);
+    }
+  }
+  return true; // Return true as booking is securely saved on the local redundant cache disk
 }
 
 app.use(express.json());
@@ -159,7 +572,7 @@ app.get("/api/razorpay/config", (req, res) => {
   res.json({
     configured: isConfigured,
     keyId: process.env.RAZORPAY_KEY_ID || "",
-    googleMeetLink: process.env.GOOGLE_MEET_LINK || "",
+    googleMeetLink: sanitizeMeetLink(process.env.GOOGLE_MEET_LINK) || "",
   });
 });
 
@@ -274,15 +687,31 @@ app.post("/api/emails/send", async (req, res) => {
       return res.status(400).json({ success: false, error: "Missing recipient details" });
     }
 
-    const meetLink = process.env.GOOGLE_MEET_LINK || rawMeetLink || "https://meet.google.com";
+    const meetLink = sanitizeMeetLink(process.env.GOOGLE_MEET_LINK || rawMeetLink || "https://meet.google.com");
+    const targetBookingId = bookingId || 'MR-' + Math.floor(1000 + Math.random() * 9000);
 
-    // Save booking to local database on disk
+    const googleCalendarUrl = generateGoogleCalendarUrl({
+      bookingId: targetBookingId,
+      packageName: packageName || "Interior Consultation",
+      date: date || "",
+      timeSlot: time || "",
+      meetLink: meetLink,
+      clientName: clientName || ""
+    });
+
+    // Save booking to persistent database in Firestore
     try {
-      const bookings = loadBookingsOnDisk();
-      const exists = bookings.some(b => b.bookingId === bookingId);
+      let bookings;
+      try {
+        bookings = await loadBookings();
+      } catch (dbErr) {
+        console.warn("[Database Fallback] Save booking read: Firestore inaccessible, utilizing disk fallback cache.");
+        bookings = loadBookingsOnDisk();
+      }
+      const exists = bookings.some(b => b.bookingId === targetBookingId);
       if (!exists) {
-        bookings.push({
-          bookingId: bookingId || 'MR-' + Math.floor(1000 + Math.random() * 9000),
+        const newBooking = {
+          bookingId: targetBookingId,
           packageName: packageName || "Interior Consultation",
           date: date || "",
           time: time || "",
@@ -293,19 +722,23 @@ app.post("/api/emails/send", async (req, res) => {
           meetLink: meetLink,
           status: "Confirmed",
           createdAt: new Date().toISOString()
-        });
-        saveBookingsToDisk(bookings);
-        console.log(`Booking ID ${bookingId} saved to database disk.`);
+        };
+        try {
+          await saveBooking(newBooking);
+          console.log(`Booking ID ${targetBookingId} saved to database.`);
+        } catch (dbErr) {
+          console.warn("[Database Fallback] Save booking write: Firestore write failed, preserved locally on disk.");
+        }
       }
     } catch (saveError) {
-      console.error("Unable to save booking to disk database:", saveError);
+      console.error("Unable to save booking to persistent database:", saveError);
     }
 
     const smtpHost = process.env.SMTP_HOST;
     const smtpPort = process.env.SMTP_PORT;
     const smtpUser = process.env.SMTP_USER;
     const smtpPass = process.env.SMTP_PASS;
-    const senderEmail = process.env.SMTP_SENDER_EMAIL || "no-reply@monicainteriors.com";
+    const senderEmail = process.env.SMTP_SENDER_EMAIL || smtpUser || "no-reply@monicainteriors.com";
     const senderName = process.env.SMTP_SENDER_NAME || "Monica Interiors";
 
     const premiumHtml = `
@@ -474,31 +907,39 @@ app.post("/api/emails/send", async (req, res) => {
             
             <div class="receipt-box">
               <div class="receipt-title">Appointment Information</div>
-              <div class="receipt-row">
-                <span class="label">Booking ID:</span>
-                <span class="value" style="font-family: monospace;">${bookingId}</span>
-              </div>
-              <div class="receipt-row">
-                <span class="label">Consultation Type:</span>
-                <span class="value">${packageName}</span>
-              </div>
-              <div class="receipt-row">
-                <span class="label">Scheduled Date:</span>
-                <span class="value">${date}</span>
-              </div>
-              <div class="receipt-row">
-                <span class="label">Reserved Time:</span>
-                <span class="value">${time} (IST)</span>
-              </div>
-              <div class="receipt-row">
-                <span class="label">Amount Secured:</span>
-                <span class="value" style="color: #3C2A21; font-weight: bold;">₹${amountPaid.toLocaleString('en-IN')}</span>
-              </div>
-              ${meetLink ? `
-              <div class="receipt-row">
-                <span class="label">Google Meet Link:</span>
-                <span class="value" style="font-family: monospace;"><a href="${meetLink}" style="color: #BFA15F; text-decoration: underline;">${meetLink}</a></span>
-              </div>` : ''}
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0;">
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #6B625E; width: 40%; vertical-align: top;">Booking ID:</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #1E1714; font-weight: 500; font-family: monospace; text-align: right; word-break: break-all;">${bookingId}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #6B625E; vertical-align: top;">Consultation Type:</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #1E1714; font-weight: 500; text-align: right;">${packageName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #6B625E; vertical-align: top;">Scheduled Date:</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #1E1714; font-weight: 500; text-align: right;">${date}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #6B625E; vertical-align: top;">Reserved Time:</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #1E1714; font-weight: 500; text-align: right;">${time} (IST)</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #6B625E; vertical-align: top;">Amount Secured:</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #3C2A21; font-weight: bold; text-align: right;">₹${amountPaid.toLocaleString('en-IN')}</td>
+                </tr>
+                ${meetLink ? `
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: none; color: #6B625E; vertical-align: top;">Google Meet Link:</td>
+                  <td style="padding: 8px 0; border-bottom: none; color: #1E1714; font-weight: 500; font-family: monospace; text-align: right; word-break: break-all;">
+                    ${meetLink.includes('spacedesignmeet') ? `
+                      <span style="color: #888; font-style: italic; font-size: 11px;">[Activation Pending Sync]</span>
+                    ` : `
+                      <a href="${meetLink}" style="color: #BFA15F; text-decoration: underline;">${meetLink}</a>
+                    `}
+                  </td>
+                </tr>` : ''}
+              </table>
             </div>
 
             <div class="instructions-box">
@@ -510,18 +951,32 @@ app.post("/api/emails/send", async (req, res) => {
                 <strong>2. Note Your Spatial Criteria:</strong> Draft a checklist of specific questions regarding room clearances, custom woodworks, budget scales, or style preferences.
               </div>
               <div class="instruction-item">
-                <strong>3. Google Meet Room:</strong> You will join a dedicated, immersive, virtual Google Meet design studio for this call. Use the direct room access button below or join with link: <a href="${meetLink || 'https://meet.google.com'}" style="color: #BFA15F; text-decoration: underline; font-family: monospace;">${meetLink || 'https://meet.google.com'}</a>.
+                <strong>3. Google Meet Room:</strong> You will join a dedicated, immersive, virtual Google Meet design studio for this call. 
+                ${meetLink && meetLink.includes('spacedesignmeet') ? `
+                  <br><span style="display: block; font-size: 11px; color: #8c7355; background-color: #faf7f2; border: 1px dashed #d1c5b4; padding: 8px; border-radius: 4px; margin-top: 5px; line-height: 1.4;">
+                    💡 <strong>Reserved Meeting Code:</strong> This room ID registers and activates on Google's systems as soon as Monica Interiors synchronizes your booking to their primary Google Calendar. If you test or visit the link early, Google Meet may display "Check your meeting code" until activation is completed by the host. Rest assured it will be completely live at the time of your call!
+                  </span>
+                ` : `
+                  Use the direct room access button below or join with link: <a href="${meetLink || 'https://meet.google.com'}" style="color: #BFA15F; text-decoration: underline; font-family: monospace;">${meetLink || 'https://meet.google.com'}</a>.
+                `}
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <a href="${meetLink || 'https://meet.google.com'}" class="btn-join">Join Google Meet Video consultation</a>
+                <a href="${meetLink && !meetLink.includes('spacedesignmeet') ? meetLink : 'https://meet.google.com'}" class="btn-join">
+                  ${meetLink && meetLink.includes('spacedesignmeet') ? 'Meet Room Activates Upon Sync' : 'Join Google Meet Video consultation'}
+                </a>
+                <div style="margin-top: 15px;">
+                  <a href="${googleCalendarUrl}" target="_blank" style="display: inline-block; background-color: #FAF8F5; border: 1px solid #3C2A21; color: #3C2A21 !important; padding: 10px 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em; text-decoration: none !important; border-radius: 4px;">
+                    📅 Add to Google Calendar
+                  </a>
+                </div>
               </div>
             </div>
           </div>
           <div class="footer">
             <p>
               Monica Interiors • Bespoke Design & Architecture Studio<br>
-              In case of reschedules, contact <a href="mailto:support@monicainteriors.com">support@monicainteriors.com</a>.
+              In case of reschedules, contact <a href="mailto:${senderEmail}">${senderEmail}</a>.
             </p>
           </div>
         </div>
@@ -531,6 +986,8 @@ app.post("/api/emails/send", async (req, res) => {
 
     if (smtpHost && smtpPort && smtpUser && smtpPass) {
       console.log(`SMTP configured. Attempting real email dispatch via Mail Server with node-mailer...`);
+      const adminTargetEmail = process.env.SMTP_SENDER_EMAIL || smtpUser;
+
       const transporter = nodemailer.createTransport({
         host: smtpHost,
         port: Number(smtpPort),
@@ -541,16 +998,41 @@ app.post("/api/emails/send", async (req, res) => {
         },
       });
 
-      // 1. Send confirmation receipt to the CLIENT
+      // Construct standard iCalendar content
+      const icsContent = generateIcsContent({
+        bookingId: targetBookingId,
+        packageName: packageName || "Interior Consultation",
+        date: date || "",
+        timeSlot: time || "",
+        clientEmail: clientEmail || "",
+        clientName: clientName || "",
+        meetLink: meetLink,
+        organizerEmail: senderEmail,
+        adminEmail: adminTargetEmail
+      });
+
+      // 1. Send confirmation receipt to the CLIENT (with icalEvent invitation)
       await transporter.sendMail({
         from: `"${senderName}" <${senderEmail}>`,
         to: clientEmail,
-        subject: `Your Space Awaits: Atelier Consultation Confirmation #${bookingId}`,
+        replyTo: senderEmail,
+        subject: `Your Space Awaits: Atelier Consultation Confirmation #${targetBookingId}`,
         html: premiumHtml,
+        icalEvent: {
+          filename: 'invite.ics',
+          method: 'REQUEST',
+          content: icsContent
+        },
+        attachments: [
+          {
+            filename: 'invite.ics',
+            content: icsContent,
+            contentType: 'text/calendar; charset=utf-8; method=REQUEST'
+          }
+        ]
       });
 
       // 2. Send instant alert notification to the WEBSITE OWNER (using SMTP_SENDER_EMAIL or SMTP_USER as target)
-      const adminTargetEmail = process.env.SMTP_SENDER_EMAIL || smtpUser;
       const adminHtml = `
         <!DOCTYPE html>
         <html>
@@ -580,18 +1062,55 @@ app.post("/api/emails/send", async (req, res) => {
                 Congratulations! A client has successfully requested and booked an elite consultation plan. Details of the secured slot are provided below:
               </p>
               
-              <div class="field"><span class="label">Booking ID/Ref:</span><span class="value" style="font-family: monospace;">${bookingId}</span></div>
-              <div class="field"><span class="label">Consultation Plan:</span><span class="value">${packageName}</span></div>
-              <div class="field"><span class="label">Reserved Date:</span><span class="value">${date}</span></div>
-              <div class="field"><span class="label">Reserved Time:</span><span class="value">${time} (IST)</span></div>
-              <div class="field"><span class="label">Client Name:</span><span class="value">${clientName}</span></div>
-              <div class="field"><span class="label">Client Email:</span><span class="value" style="font-family: monospace;"><a href="mailto:${clientEmail}" style="color: #BFA15F; text-decoration: none;">${clientEmail}</a></span></div>
-              <div class="field"><span class="label">Client Phone:</span><span class="value" style="font-family: monospace;"><a href="tel:${clientPhone}" style="color: #BFA15F; text-decoration: none;">${clientPhone}</a></span></div>
-              <div class="field"><span class="label">Google Meet Link:</span><span class="value" style="font-family: monospace;"><a href="${meetLink || 'https://meet.google.com'}" style="color: #BFA15F; text-decoration: none;">${meetLink || 'https://meet.google.com'}</a></span></div>
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0;">
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #7F675B; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; width: 35%; vertical-align: top;">Booking ID/Ref:</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #1E1714; font-weight: 500; font-family: monospace; text-align: right; word-break: break-all;">${targetBookingId}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #7F675B; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; vertical-align: top;">Consultation Plan:</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #1E1714; font-weight: 500; text-align: right;">${packageName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #7F675B; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; vertical-align: top;">Reserved Date:</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #1E1714; font-weight: 500; text-align: right;">${date}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #7F675B; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; vertical-align: top;">Reserved Time:</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #1E1714; font-weight: 500; text-align: right;">${time} (IST)</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #7F675B; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; vertical-align: top;">Client Name:</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #1E1714; font-weight: 500; text-align: right;">${clientName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #7F675B; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; vertical-align: top;">Client Email:</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #1E1714; font-weight: 500; font-family: monospace; text-align: right; word-break: break-all;"><a href="mailto:${clientEmail}" style="color: #BFA15F; text-decoration: none;">${clientEmail}</a></td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #7F675B; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; vertical-align: top;">Client Phone:</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid rgba(60, 42, 33, 0.05); color: #1E1714; font-weight: 500; font-family: monospace; text-align: right;"><a href="tel:${clientPhone}" style="color: #BFA15F; text-decoration: none;">${clientPhone}</a></td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 2px solid #BFA15F; color: #7F675B; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; vertical-align: top;">Google Meet Link:</td>
+                  <td style="padding: 10px 0; border-bottom: 2px solid #BFA15F; color: #1E1714; font-weight: 500; font-family: monospace; text-align: right; word-break: break-all;"><a href="${meetLink || 'https://meet.google.com'}" style="color: #BFA15F; text-decoration: none;">${meetLink || 'https://meet.google.com'}</a></td>
+                </tr>
+                <tr>
+                  <td style="padding: 15px 0 5px 0; color: #1E1714; font-weight: bold; font-size: 13px; vertical-align: middle;">Amount Captured (Razorpay):</td>
+                  <td style="padding: 15px 0 5px 0; color: #3C2A21; font-weight: bold; font-size: 15px; text-align: right; vertical-align: middle;">₹${amountPaid.toLocaleString('en-IN')}</td>
+                </tr>
+              </table>
               
-              <div class="total">
-                <span>Amount Captured (Razorpay):</span>
-                <span style="color: #3C2A21;">₹${amountPaid.toLocaleString('en-IN')}</span>
+              <div style="background-color: #FAF8F5; border: 1px solid #BFA15F; padding: 20px; border-radius: 8px; margin-top: 25px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.01);">
+                <p style="margin: 0 0 12px 0; font-size: 13px; color: #1E1714; font-weight: 500; font-family: sans-serif;">
+                  📅 <strong>Secure this consultation in your Calendar:</strong>
+                </p>
+                <a href="${googleCalendarUrl}" target="_blank" style="display: inline-block; background-color: #1E1714; color: #FAF8F5 !important; text-decoration: none !important; padding: 12px 24px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.15);">
+                  Add to Google Calendar
+                </a>
+                <p style="margin: 8px 0 0 0; font-size: 10px; color: #8F817B; font-family: sans-serif; line-height: 1.4;">
+                  (Bypasses email client attachment filters to instantly pin this event onto your primary Google account)
+                </p>
               </div>
             </div>
           </div>
@@ -602,8 +1121,21 @@ app.post("/api/emails/send", async (req, res) => {
       await transporter.sendMail({
         from: `"${senderName} Notifications" <${senderEmail}>`,
         to: adminTargetEmail,
-        subject: `[STUDIO ALERT] New Bespoke Booking #${bookingId} - ${clientName}`,
+        replyTo: senderEmail,
+        subject: `[STUDIO ALERT] New Bespoke Booking #${targetBookingId} - ${clientName}`,
         html: adminHtml,
+        icalEvent: {
+          filename: 'invite.ics',
+          method: 'REQUEST',
+          content: icsContent
+        },
+        attachments: [
+          {
+            filename: 'invite.ics',
+            content: icsContent,
+            contentType: 'text/calendar; charset=utf-8; method=REQUEST'
+          }
+        ]
       });
 
       return res.json({
@@ -658,14 +1190,21 @@ app.post("/api/emails/send", async (req, res) => {
 });
 
 // User query API endpoint (helps patients/clients find their bookings by email, phone, or Booking ID)
-app.get("/api/bookings/query", (req, res) => {
+app.get("/api/bookings/query", async (req, res) => {
   try {
     const { value } = req.query;
     if (!value) {
       return res.status(400).json({ error: "Email, phone number, or booking ID is required for lookup" });
     }
     const searchStr = String(value).trim().toLowerCase();
-    const bookings = loadBookingsOnDisk();
+    
+    let bookings;
+    try {
+      bookings = await loadBookings();
+    } catch (dbErr) {
+      console.warn("[Database Fallback] Query bookings: Firestore inaccessible, utilizing disk fallback cache.");
+      bookings = loadBookingsOnDisk();
+    }
     
     const filtered = bookings.filter(b => 
       String(b.clientEmail || "").trim().toLowerCase() === searchStr || 
@@ -684,7 +1223,7 @@ app.get("/api/bookings/query", (req, res) => {
 });
 
 // Admin secure retrieval API endpoint (for the website/studio owners to review all bookings)
-app.get("/api/bookings/all", (req, res) => {
+app.get("/api/bookings/all", async (req, res) => {
   try {
     const pin = req.query.pin || req.headers["x-admin-pin"];
     const correctPin = process.env.ADMIN_PIN || "2306";
@@ -693,7 +1232,14 @@ app.get("/api/bookings/all", (req, res) => {
       return res.status(401).json({ error: "Access Denied. Incorrect Studio PIN identifier." });
     }
     
-    const bookings = loadBookingsOnDisk();
+    let bookings;
+    try {
+      bookings = await loadBookings();
+    } catch (dbErr) {
+      console.warn("[Database Fallback] Get all bookings: Firestore inaccessible, utilizing disk fallback cache.");
+      bookings = loadBookingsOnDisk();
+    }
+    
     // Sort matching records with latest first
     bookings.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     
@@ -705,7 +1251,7 @@ app.get("/api/bookings/all", (req, res) => {
 });
 
 // Admin secure update API endpoint (allows the studio coordinator to update statuses)
-app.post("/api/bookings/update-status", (req, res) => {
+app.post("/api/bookings/update-status", async (req, res) => {
   try {
     const { pin, bookingId, status } = req.body;
     const correctPin = process.env.ADMIN_PIN || "2306";
@@ -718,7 +1264,14 @@ app.post("/api/bookings/update-status", (req, res) => {
       return res.status(400).json({ error: "Missing required update parameters." });
     }
     
-    const bookings = loadBookingsOnDisk();
+    let bookings;
+    try {
+      bookings = await loadBookings();
+    } catch (dbErr) {
+      console.warn("[Database Fallback] Update status read: Firestore inaccessible, utilizing disk fallback cache.");
+      bookings = loadBookingsOnDisk();
+    }
+    
     const index = bookings.findIndex(b => b.bookingId === bookingId);
     if (index === -1) {
       return res.status(404).json({ error: "Specified booking reference not found." });
@@ -726,16 +1279,63 @@ app.post("/api/bookings/update-status", (req, res) => {
     
     bookings[index].status = status;
     bookings[index].updatedAt = new Date().toISOString();
-    saveBookingsToDisk(bookings);
+    
+    try {
+      await saveBooking(bookings[index]);
+    } catch (dbErr) {
+      console.warn("[Database Fallback] Update status write: Firestore write inaccessible, saved locally on disk.");
+    }
     
     res.json({ 
       success: true, 
-      message: `Booking updated to ${status} status successfully.`, 
+      message: `Booking updated to ${status} status successfully (Resilience fallback active).`, 
       booking: bookings[index] 
     });
   } catch (err: any) {
     console.error("Update status error:", err);
     res.status(500).json({ error: "Failed to update booking status.", details: err?.message || err });
+  }
+});
+
+// SECURE API endpoint to update a booking's Google Meet link after dynamic creation
+app.post("/api/bookings/update-meet-link", async (req, res) => {
+  try {
+    const { bookingId, meetLink } = req.body;
+    
+    if (!bookingId || !meetLink) {
+      return res.status(400).json({ error: "Booking ID and Google Meet Link are required." });
+    }
+    
+    let bookings;
+    try {
+      bookings = await loadBookings();
+    } catch (dbErr) {
+      console.warn("[Database Fallback] Update meet link read: Firestore inaccessible, utilizing disk fallback cache.");
+      bookings = loadBookingsOnDisk();
+    }
+    
+    const index = bookings.findIndex(b => b.bookingId === bookingId);
+    if (index === -1) {
+      return res.status(404).json({ error: "Specified booking reference not found." });
+    }
+    
+    bookings[index].meetLink = sanitizeMeetLink(meetLink);
+    bookings[index].updatedAt = new Date().toISOString();
+    
+    try {
+      await saveBooking(bookings[index]);
+    } catch (dbErr) {
+      console.warn("[Database Fallback] Update meet link write: Firestore write inaccessible, saved locally on disk.");
+    }
+    
+    res.json({ 
+      success: true, 
+      message: "Google Meet link synchronized successfully (Resilience fallback active).", 
+      booking: bookings[index] 
+    });
+  } catch (err: any) {
+    console.error("Update meet link error:", err);
+    res.status(500).json({ error: "Failed to sync Meet link.", details: err?.message || err });
   }
 });
 

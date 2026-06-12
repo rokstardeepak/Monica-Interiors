@@ -59,12 +59,12 @@ export default function ServiceDetails({ serviceId, onClose, onBookService }: Se
       id: 'space-planning',
       title: 'Space Planning & Layout',
       tagline: 'Micro-Clearance Audits & Spatial Flow Engineering',
-      subheader: 'AutoCAD Drafting & Scientific Vastu Configuration Alignments',
+      subheader: 'AutoCAD Drafting & Scientific Spatial Layout Alignments',
       packageId: 'c1',
       mainImage: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&q=80&w=1200',
       thumbImage1: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=650',
       thumbImage2: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=650',
-      longDescription: 'Poor layout flow destroys beautiful rooms before they are even built. Our space planning service investigates exact active clearances, door opening envelope boundaries, entry vista framing, and physical ergonomics. In addition, we apply traditional Vastu guidelines seamlessly without introducing visual compromises, ensuring your home feels natural, open, and logically aligned.',
+      longDescription: 'Poor layout flow destroys beautiful rooms before they are even built. Our space planning service investigates exact active clearances, door opening envelope boundaries, entry vista framing, and physical ergonomics. In addition, we apply modern spatial layouts seamlessly without introducing visual compromises, ensuring your home feels natural, open, and logically aligned.',
       specs: [
         { label: 'Timeline', value: '1 - 2 Weeks Turnaround' },
         { label: 'Key Tool', value: 'AutoCAD Layout Profiler' },
@@ -74,7 +74,7 @@ export default function ServiceDetails({ serviceId, onClose, onBookService }: Se
       deliverables: [
         'Interactive 2D multi-option AutoCAD furniture and spatial arrangements',
         'Active egress and clearance envelope stress test diagram overlays',
-        'Comprehensive Vastu-friendly orientation and doorway adjustments map',
+        'Comprehensive circulation-focused orientation and doorway adjustments map',
         'Detailed structural dimension recommendations to give your contractor',
         'Door transition & wall opening partition recommendation checklist'
       ],

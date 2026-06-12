@@ -17,6 +17,7 @@ interface HeaderProps {
 
 export default function Header({ onBookClick, activeSection, setActiveSection, onOpenPortal }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [hoveredId, setHoveredId] = React.useState<string | null>(null);
 
   const navItems = [
     { id: 'hero', name: 'Home' },
@@ -54,12 +55,12 @@ export default function Header({ onBookClick, activeSection, setActiveSection, o
 
   return (
     <header className="sticky top-0 z-40 bg-[#FAF8F5]/90 backdrop-blur-md border-b border-[#3C2A21]/10">
-      <div className="max-w-none px-4 sm:px-10 h-22 flex items-center justify-between">
+      <div className="max-w-none pl-2.5 pr-4 sm:pl-6 sm:pr-8 h-22 flex items-center justify-between">
         
         {/* Vector Monogram + Brand Titles */}
         <div 
           onClick={() => scrollTo('hero')} 
-          className="flex items-center gap-2 sm:gap-4 cursor-pointer group"
+          className="flex items-center gap-2 sm:gap-4 cursor-pointer group translate-x-1.5 sm:translate-x-3"
           id="brand-logo"
         >
           {/* Exact Brand Monogram */}
@@ -89,23 +90,40 @@ export default function Header({ onBookClick, activeSection, setActiveSection, o
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-1.5 lg:gap-3 xl:gap-4 flex-nowrap md:translate-x-2 lg:translate-x-4 xl:translate-x-6">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => scrollTo(item.id)}
-              className={`font-sans text-[13px] uppercase tracking-[0.2em] transition-all relative py-2 ${
+              onMouseEnter={() => setHoveredId(item.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              className={`font-sans text-[11px] lg:text-[12px] xl:text-[13px] uppercase tracking-[0.08em] lg:tracking-[0.14em] xl:tracking-[0.18em] relative py-2 px-3 rounded-md transition-colors duration-200 whitespace-nowrap ${
                 activeSection === item.id 
                   ? 'text-[#3C2A21] font-medium' 
                   : 'text-[#6B625E] hover:text-[#3C2A21]'
               }`}
               id={`nav-${item.id}`}
             >
-              {item.name}
+              {/* Interaction Hover Underlay Capsule */}
+              <AnimatePresence>
+                {hoveredId === item.id && (
+                  <motion.span
+                    layoutId="hoverNavPill"
+                    className="absolute inset-0 bg-[#3C2A21]/5 rounded-md"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+              </AnimatePresence>
+
+              <span className="relative z-10">{item.name}</span>
+              
               {activeSection === item.id && (
                 <motion.div
                   layoutId="activeNavIndicator"
-                  className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#BFA15F]"
+                  className="absolute bottom-1.5 left-3 right-3 h-[1.5px] bg-[#BFA15F]"
                   transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                 />
               )}
@@ -114,7 +132,7 @@ export default function Header({ onBookClick, activeSection, setActiveSection, o
         </nav>
 
         {/* Action Button - Secure Gateway Booking */}
-        <div className="hidden lg:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3 lg:translate-x-2 xl:translate-x-4">
           {onOpenPortal && (
             <button
               onClick={onOpenPortal}
@@ -126,11 +144,11 @@ export default function Header({ onBookClick, activeSection, setActiveSection, o
           )}
           <button
             onClick={onBookClick}
-            className="flex items-center gap-2.5 bg-[#3C2A21] text-[#FAF8F5] px-5 py-3 hover:bg-[#1E2941] active:scale-98 transition-all font-sans text-xs uppercase tracking-[0.15em] font-medium shadow-md shadow-[#3C2A21]/15"
+            className="group flex items-center gap-2 bg-[#3C2A21] text-[#FAF8F5] px-3.5 py-2.5 hover:bg-[#BFA15F] hover:text-[#1E1714] active:scale-98 transition-all font-sans text-xs uppercase tracking-[0.12em] font-medium shadow-md shadow-[#3C2A21]/15"
             id="header-book-btn"
           >
-            <Calendar className="w-4 h-4 text-[#BFA15F]" />
-            Book Consult
+            <Calendar className="w-4 h-4 text-[#BFA15F] group-hover:text-[#1E1714] transition-colors" />
+            Book consultation
           </button>
         </div>
 
@@ -187,12 +205,12 @@ export default function Header({ onBookClick, activeSection, setActiveSection, o
                     setMobileMenuOpen(false);
                     onBookClick();
                   }}
-                  className="w-full flex items-center justify-center gap-2 bg-[#3C2A21] text-[#FAF8F5] py-3.5 text-xs uppercase tracking-[0.15em] font-medium shadow-md"
+                  className="group w-full flex items-center justify-center gap-2 bg-[#3C2A21] hover:bg-[#BFA15F] hover:text-[#1E1714] text-[#FAF8F5] py-3.5 text-xs uppercase tracking-[0.15em] font-medium shadow-md transition-all duration-200"
                   id="mobile-drawer-book-btn"
                 >
-                  <Calendar className="w-4 h-4 text-[#BFA15F]" />
-                  Book Consult
-                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  <Calendar className="w-4 h-4 text-[#BFA15F] group-hover:text-[#1E1714] transition-colors" />
+                  Book consultation
+                  <ArrowRight className="w-3.5 h-3.5 ml-1 text-[#FAF8F5] group-hover:text-[#1E1714] transition-colors" />
                 </button>
               </div>
             </div>

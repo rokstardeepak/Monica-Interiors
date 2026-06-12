@@ -67,6 +67,16 @@ export const PROJECTS_DATA: Project[] = [
     location: 'Aerocity, New Delhi',
     scope: 'Soundproofing design, Corporate lighting setup, Custom conference table',
     materials: ['Wooden Soundproof Panels', 'Textured Walls', 'Decorative Fluted Glass', 'Sleek Led Hanging Lights']
+  },
+  {
+    id: 'p6',
+    title: 'Signature Marble Bath Sanctuary',
+    category: 'Residential',
+    description: 'An ultra-luxurious, spa-like private bathroom featuring master-carved Calacatta marble wall slabs, a custom freestanding stone bathtub, gold-finished plumbing brassware, and integrated ambient vanity lighting.',
+    image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80&w=1200',
+    location: 'Juhu Scheme, Mumbai',
+    scope: 'Wet area layout planning, tailored marble vein alignment drafting, custom vanity design, specialized wet-zone ventilation',
+    materials: ['Calacatta Marble Slabs', 'Brushed Gold Brassware', 'Concealed LED Warm Strips', 'Oak Veneer Vanity Cabinetry']
   }
 ];
 
@@ -74,7 +84,7 @@ export const CONSULTATION_PACKAGES: ConsultationType[] = [
   {
     id: 'c1',
     name: 'Spatial Discovery & Layout Audit',
-    price: 250,
+    price: 649,
     duration: '60 Minutes',
     description: 'A focused call to address layout bottlenecks, optimize clearances, and plan strategic zoning structures before starting construction.',
     features: [
@@ -87,7 +97,7 @@ export const CONSULTATION_PACKAGES: ConsultationType[] = [
   {
     id: 'c2',
     name: 'Premium Concept & Materiality',
-    price: 250,
+    price: 1500,
     duration: '120 Minutes',
     description: 'Deep dive into bespoke styling palette curation. Ideal for Living Room, Bedroom & Kids Room Concepts, selecting premium timber, veneer, and marbles.',
     features: [
@@ -102,13 +112,13 @@ export const CONSULTATION_PACKAGES: ConsultationType[] = [
   {
     id: 'c3',
     name: 'Turnkey Luxury Masterplan',
-    price: 250,
+    price: 450,
     duration: '180 Minutes',
     description: 'A comprehensive, end-to-end design formulation. Best suited for clients seeking Turnkey Interior Execution with complete site hand-holding.',
     features: [
       'End-to-end complete home interior spatial blueprint',
       'Plastering, civil layout & electrical location guidance',
-      'Vastu-friendly orientation & spatial clearance advice',
+      'Ergonomic furniture layouts & spatial clearance advice',
       'Turnkey vendor integration budget projection list',
       'Fee 100% redeemable against turnkey execution retainer'
     ]

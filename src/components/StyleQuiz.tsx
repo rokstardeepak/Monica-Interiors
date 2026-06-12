@@ -244,7 +244,9 @@ export default function StyleQuiz({ onBookSelectedType }: StyleQuizProps) {
                   {/* Price Bubble */}
                   <div className="my-4 flex items-baseline gap-1">
                     <span className="font-serif text-3xl font-bold text-[#3C2A21]">₹{matchedPackage?.price?.toLocaleString('en-IN')}</span>
-                    <span className="font-mono text-[11px] text-[#6B625E]/60 uppercase">/ Non-refundable fee</span>
+                    <span className="font-mono text-[11px] text-[#6B625E]/60 uppercase">
+                      / Non-refundable fee
+                    </span>
                   </div>
 
                   <p className="font-sans text-xs text-[#6B625E] leading-relaxed font-light mb-4">
@@ -264,10 +266,10 @@ export default function StyleQuiz({ onBookSelectedType }: StyleQuizProps) {
                 <div className="flex flex-col gap-3 pt-4 border-t border-[#3C2A21]/10">
                   <button
                     onClick={() => onBookSelectedType(matchedData.recommendedPackage)}
-                    className="w-full flex items-center justify-center gap-2 bg-[#3C2A21] hover:bg-[#1E2941] text-[#FAF8F5] py-3 text-xs uppercase tracking-[0.15em] font-medium transition-all"
+                    className="group w-full flex items-center justify-center gap-2 bg-[#3C2A21] hover:bg-[#BFA15F] hover:text-[#1E1714] text-[#FAF8F5] py-3 text-xs uppercase tracking-[0.15em] font-medium transition-all duration-200"
                     id="quiz-result-book-btn"
                   >
-                    <Calendar className="w-3.5 h-3.5 text-[#BFA15F]" />
+                    <Calendar className="w-3.5 h-3.5 text-[#BFA15F] group-hover:text-[#1E1714] transition-colors" />
                     Book This Consultation
                   </button>
 

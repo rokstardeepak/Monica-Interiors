@@ -118,8 +118,20 @@ export default function Footer({ onBookClick, onOpenPolicy, onOpenPortal }: Foot
 
         {/* Studio Sub-bar */}
         <div className="border-t border-[#FAF8F5]/15 mt-16 pt-8 flex flex-col xl:flex-row items-center justify-between gap-6 font-sans text-xs text-[#FAF8F5]/40 font-light text-center xl:text-left">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             <span>&copy; {new Date().getFullYear()} Monica Interiors. All rights reserved.</span>
+            <span className="text-[#FAF8F5]/50 select-text">
+              Website developed by{' '}
+              <a 
+                href="https://deepakkumaragency.netlify.app/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-[#BFA15F] hover:text-white underline transition-all font-medium"
+                id="developer-agency-link"
+              >
+                Deepak Kumar Agency
+              </a>
+            </span>
             <span>END-TO-END INTERIOR SERVICES &bull; Premium Residential & Commercial.</span>
           </div>
           

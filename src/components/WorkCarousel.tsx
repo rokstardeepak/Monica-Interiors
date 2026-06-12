@@ -405,8 +405,6 @@ export default function WorkCarousel() {
         {/* PRIMARY IMMERSIVE AUTO-SLIDING VIEW CAROUSEL */}
         <div 
           className="relative grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch bg-white border border-[#3C2A21]/15 rounded-xl overflow-hidden shadow-xl"
-          onMouseEnter={() => setIsAutoPlaying(false)}
-          onMouseLeave={() => setIsAutoPlaying(true)}
           id="carousel-slider-body"
         >
           {/* IMAGE SIDE CONTAINER - 7/12 grid */}
